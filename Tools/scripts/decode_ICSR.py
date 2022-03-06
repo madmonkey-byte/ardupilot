@@ -75,37 +75,25 @@ class DecodeICSR(object):
         return self.decoder_m4_vectactive(value)
 
     def decoder_m4_isrpending(self, value):
-        if value:
-            out = "Interrupt pending"
-        else:
-            out = "No pending interupt"
+        out = "Interrupt pending" if value else "No pending interupt"
         return (" (%s)" % out)
 
     def decoder_m4_pendstclr(self, value):
         return (" (WO clears SysTick exception)")
 
     def decoder_m4_pendstset(self, value):
-        if value:
-            out = "SysTick pending"
-        else:
-            out = "SysTick not pending"
+        out = "SysTick pending" if value else "SysTick not pending"
         return (" (%s)" % out)
 
     def decoder_m4_pendsvclr(self, value):
         return (" (WO clears pendsv exception)")
 
     def decoder_m4_pendsvset(self, value):
-        if value:
-            out = "PendSV pending"
-        else:
-            out = "PendSV not pending"
+        out = "PendSV pending" if value else "PendSV not pending"
         return (" (%s)" % out)
 
     def decoder_m4_nmipendset(self, value):
-        if value:
-            out = "NMI pending"
-        else:
-            out = "NMI not pending"
+        out = "NMI pending" if value else "NMI not pending"
         return (" (%s)" % out)
 
     def string(self, ICSR):
@@ -133,9 +121,6 @@ class DecodeICSR(object):
                 ret += decoder(value)
             ret += "\n"
         return ret
-
-        if complete_mask != 0b11111111111111111111111111111111:
-            raise Exception("Mask incomplete")
 
     def run(self, ICSR):
         sys.stdout.write(self.string(ICSR))

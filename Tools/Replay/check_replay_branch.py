@@ -56,18 +56,18 @@ class CheckReplayBranch(object):
                 if not seen_log_disarmed:
                     return False
                 break
-            if m.Name == "LOG_REPLAY":
-                if seen_log_replay:
-                    return False
-                if m.Value != 1:
-                    return False
-                seen_log_replay = True
             if m.Name == "LOG_DISARMED":
                 if seen_log_disarmed:
                     return False
                 seen_log_disarmed = True
                 if m.Value != 1:
                     return False
+            elif m.Name == "LOG_REPLAY":
+                if seen_log_replay:
+                    return False
+                if m.Value != 1:
+                    return False
+                seen_log_replay = True
         return False
 
     def is_replay_log(self, logfile_path):

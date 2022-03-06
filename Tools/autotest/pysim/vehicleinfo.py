@@ -393,9 +393,8 @@ class VehicleInfo(object):
                 if frame.startswith(p):
                     ret = self.options[vehicle]["frames"][p]
                     break
-        if ret is None:
-            if frame.endswith("-heli"):
-                ret = self.options[vehicle]["frames"]["heli"]
+        if ret is None and frame.endswith("-heli"):
+            ret = self.options[vehicle]["frames"]["heli"]
         if ret is None:
             print("WARNING: no config for frame (%s)" % frame)
             ret = {}

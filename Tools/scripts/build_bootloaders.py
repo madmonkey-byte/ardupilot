@@ -4,18 +4,14 @@
 script to build all of our bootloaders using AP_Bootloader and put the resulting binaries in Tools/bootloaders
 """
 
+
 import os
 import shutil
 import subprocess
 import sys
 import fnmatch
 
-board_pattern = '*'
-
-# allow argument for pattern of boards to build
-if len(sys.argv)>1:
-    board_pattern = sys.argv[1]
-
+board_pattern = sys.argv[1] if len(sys.argv)>1 else '*'
 os.environ['PYTHONUNBUFFERED'] = '1'
 
 failed_boards = set()

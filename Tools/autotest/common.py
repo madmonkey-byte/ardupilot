@@ -305,9 +305,8 @@ class Telem(object):
             raise ValueError("Short write")
 
     def update(self):
-        if not self.connected:
-            if not self.connect():
-                return
+        if not self.connected and not self.connect():
+            return
         self.update_read()
 
 
@@ -380,7 +379,7 @@ class LTM(Telem):
             def intn(self, offset, count):
                 ret = 0
                 for i in range(offset, offset+count):
-                    ret = ret | (ord(self.buffer[i]) << ((i-offset)*8))
+                    ret |= ord(self.buffer[i]) << ((i-offset)*8)
                 return ret
 
             def int32(self, offset):
@@ -569,10 +568,7 @@ class FRSkyD(FRSky):
             if len(self.buffer) == 0:
                 break
             consume = 1
-            if sys.version_info.major >= 3:
-                b = self.buffer[0]
-            else:
-                b = ord(self.buffer[0])
+            b = self.buffer[0] if sys.version_info.major >= 3 else ord(self.buffer[0])
             if self.state == self.state_WANT_START_STOP_D:
                 if b != self.START_STOP_D:
                     # we may come into a stream mid-way, so we can't judge
@@ -719,7 +715,7 @@ class MAVliteMessage(object):
         seq = 0
         sequenced = bytearray()
         while len(all_bytes):
-            chunk = all_bytes[0:5]
+            chunk = all_bytes[:5]
             all_bytes = all_bytes[5:]
             sequenced.append(seq)
             sequenced.extend(chunk)
@@ -734,7 +730,7 @@ class MAVliteMessage(object):
         sequenced.append(checksum)
 
         while len(sequenced):
-            chunk = sequenced[0:6]
+            chunk = sequenced[:6]
             sequenced = sequenced[6:]
             chunk.extend([0] * (6-len(chunk))) # pad to 6
             packet = SPortUplinkPacket(
@@ -931,20 +927,14 @@ class FRSkySPort(FRSky):
             self.progress("(0x%x): %u" % (sensor_id, self.sensor_id_poll_counts[sensor_id]))
 
     def read_bytestuffed_byte(self):
-        if sys.version_info.major >= 3:
-            b = self.buffer[0]
-        else:
-            b = ord(self.buffer[0])
+        b = self.buffer[0] if sys.version_info.major >= 3 else ord(self.buffer[0])
         if b == 0x7D:
             # byte-stuffed
             if len(self.buffer) < 2:
                 self.consume = 0
                 return None
             self.consume = 2
-            if sys.version_info.major >= 3:
-                b2 = self.buffer[1]
-            else:
-                b2 = ord(self.buffer[1])
+            b2 = self.buffer[1] if sys.version_info.major >= 3 else ord(self.buffer[1])
             if b2 == 0x5E:
                 return self.START_STOP_SPORT
             if b2 == 0x5D:
@@ -1064,10 +1054,9 @@ class FRSkySPort(FRSky):
         self.send_sport_packets(packets)
 
     def update(self):
-        if not self.connected:
-            if not self.connect():
-                self.progress("Failed to connect")
-                return
+        if not self.connected and not self.connect():
+            self.progress("Failed to connect")
+            return
         self.check_poll()
         self.do_sport_read()
 
@@ -1080,10 +1069,7 @@ class FRSkySPort(FRSky):
             if len(self.buffer) == 0:
                 break
             self.consume = 1
-            if sys.version_info.major >= 3:
-                b = self.buffer[0]
-            else:
-                b = ord(self.buffer[0])
+            b = self.buffer[0] if sys.version_info.major >= 3 else ord(self.buffer[0])
 #            self.progress("Have (%s) bytes state=%s b=0x%02x" % (str(len(self.buffer)), str(self.state), b));
             if self.state == self.state_WANT_FRAME_TYPE:
                 if b in [self.SPORT_DATA_FRAME, self.SPORT_DOWNLINK_FRAME]:
@@ -1095,8 +1081,6 @@ class FRSkySPort(FRSky):
                 # we may come into a stream mid-way, so we can't judge
                 self.progress("############# Bad char %x" % b)
                 raise ValueError("Bad char (0x%02x)" % b)
-                self.bad_chars += 1
-                continue
             elif self.state == self.state_WANT_ID1:
                 self.id1 = self.read_bytestuffed_byte()
                 if self.id1 is None:
@@ -1131,24 +1115,21 @@ class FRSkySPort(FRSky):
                 dataid = (self.id2 << 8) | self.id1
                 if self.crc != crc:
                     self.progress("Incorrect frsky checksum (received=%02x calculated=%02x id=0x%x)" % (crc, self.crc, dataid))
-#                    raise ValueError("Incorrect frsky checksum (want=%02x got=%02x id=0x%x)" % (crc, self.crc, dataid))
+                elif self.frame == self.SPORT_DOWNLINK_FRAME:
+                    self.handle_data_downlink([
+                        self.id1,
+                        self.id2,
+                        self.data_bytes[0],
+                        self.data_bytes[1],
+                        self.data_bytes[2],
+                        self.data_bytes[3]]
+                    )
                 else:
-                    if self.frame == self.SPORT_DOWNLINK_FRAME:
-                        self.handle_data_downlink([
-                            self.id1,
-                            self.id2,
-                            self.data_bytes[0],
-                            self.data_bytes[1],
-                            self.data_bytes[2],
-                            self.data_bytes[3]]
-                        )
-                    else:
-                        self.handle_data(dataid, self.data)
+                    self.handle_data(dataid, self.data)
                 self.state = self.state_SEND_POLL
             elif self.state == self.state_SEND_POLL:
                 # this is done in check_poll
                 self.progress("in send_poll state")
-                pass
             else:
                 raise ValueError("Unknown state (%s)" % self.state)
 
@@ -1250,7 +1231,7 @@ class AutoTest(ABC):
         self.skip_list = []
         self.run_tests_called = False
         self._show_test_timings = _show_test_timings
-        self.test_timings = dict()
+        self.test_timings = {}
         self.total_waiting_to_arm_time = 0
         self.waiting_to_arm_count = 0
         self.force_ahrs_type = force_ahrs_type
@@ -1365,19 +1346,15 @@ class AutoTest(ABC):
         return self.log_name()
 
     def repeatedly_apply_parameter_file(self, filepath):
-        if False:
-            return self.repeatedly_apply_parameter_file_mavproxy(filepath)
         parameters = mavparm.MAVParmDict()
 #        correct_parameters = set()
         parameters.load(filepath)
-        param_dict = {}
-        for p in parameters.keys():
-            param_dict[p] = parameters[p]
+        param_dict = {p: parameters[p] for p in parameters.keys()}
         self.set_parameters(param_dict)
 
     def repeatedly_apply_parameter_file_mavproxy(self, filepath):
         '''keep applying a parameter file until no parameters changed'''
-        for i in range(0, 3):
+        for _ in range(3):
             self.mavproxy.send("param load %s\n" % filepath)
             while True:
                 line = self.mavproxy.readline()
@@ -1399,7 +1376,7 @@ class AutoTest(ABC):
             self.repeatedly_apply_parameter_file(os.path.join(testdir, x))
 
     def count_lines_in_filepath(self, filepath):
-        return len([i for i in open(filepath)])
+        return len(list(open(filepath)))
 
     def count_expected_fence_lines_in_filepath(self, filepath):
         count = 0
@@ -1491,7 +1468,7 @@ class AutoTest(ABC):
         if returned_count != count:
             raise NotAchievedException("Returned count mismatch (want=%u got=%u)" %
                                        (count, returned_count))
-        for i in range(count):
+        for _ in range(count):
             self.progress("Requesting fence point")
             m = self.get_fence_point(offset, target_system=target_system, target_component=target_component)
             if abs(m.lat-loc.lat) > self.fencepoint_protocol_epsilon():
@@ -1524,11 +1501,13 @@ class AutoTest(ABC):
                 total_lat += loc.lat
                 total_lng += loc.lng
                 total_cnt += 1
-            locs2 = [mavutil.location(total_lat/total_cnt,
-                                      total_lng/total_cnt,
-                                      0,
-                                      0)]  # return point
-            locs2.extend(locs)
+            locs2 = [
+                mavutil.location(
+                    total_lat / total_cnt, total_lng / total_cnt, 0, 0
+                ),
+                *locs,
+            ]
+
             locs2.append(copy.copy(locs2[1]))
             return self.roundtrip_fence_using_fencepoint_protocol(locs2)
 
@@ -1655,8 +1634,6 @@ class AutoTest(ABC):
                 pass
             except Exception as e:
                 self.progress("Got unexpected exception (%s)" % str(type(e)))
-                pass
-
         # empty mav to avoid getting old timestamps:
         self.do_timesync_roundtrip(timeout_in_wallclock=True)
 
@@ -1814,9 +1791,7 @@ class AutoTest(ABC):
         '''return list of files named LogStructure.h'''
         ret = []
         for root, _, files in os.walk(self.rootdir()):
-            for f in files:
-                if f == 'LogStructure.h':
-                    ret.append(os.path.join(root, f))
+            ret.extend(os.path.join(root, f) for f in files if f == 'LogStructure.h')
         return ret
 
     def all_log_format_ids(self):

@@ -51,8 +51,7 @@ This list is automatically generated from the latest ardupilot source code, and 
         self.t = ''
 
     def escape(self, s):
-        ret = re.sub(self.rstescape, "\\\\\g<1>", s)
-        return ret
+        return re.sub(self.rstescape, "\\\\\g<1>", s)
 
     def close(self):
         self.f.write(self.preamble)
@@ -73,21 +72,22 @@ This list is automatically generated from the latest ardupilot source code, and 
             rowheading_lines.extend([""] * (height - len(rowheading_lines)))
 
         out_lines = []
-        for i in range(0, height):
+        for i in range(height):
             out_line = ""
             if rowheading is not None:
                 rowheading_line = rowheading_lines[i]
-                out_line += joiner + " " + rowheading_line + " " * (widths[0] - len(rowheading_line) - 1)
+                out_line += f'{joiner} {rowheading_line}' + " " * (
+                    widths[0] - len(rowheading_line) - 1
+                )
+
                 joiner = "#"
-            j = 0
-            for item in row_lines:
+            for j, item in enumerate(row_lines):
                 widthnum = j
                 if rowheading is not None:
                     widthnum += 1
                 line = item[i]
-                out_line += joiner + " " + line + " " * (widths[widthnum] - len(line) - 1)
+                out_line += f'{joiner} {line}' + " " * (widths[widthnum] - len(line) - 1)
                 joiner = "|"
-                j += 1
             out_line += "|"
             out_lines.append(out_line)
         return "\n".join(out_lines)
@@ -128,14 +128,13 @@ This list is automatically generated from the latest ardupilot source code, and 
                 all_rowheadings.append("")
             all_rowheadings.extend(rowheadings)
 
-        for rownum in range(0, len(rows_to_check)):
+        for rownum in range(len(rows_to_check)):
             row = rows_to_check[rownum]
             values_to_check = []
             if rowheadings is not None:
                 values_to_check.append(all_rowheadings[rownum])
             values_to_check.extend(row[:])
-            colnum = 0
-            for value in values_to_check:
+            for colnum, value in enumerate(values_to_check):
                 height = len(value.split("\n"))
                 if height > heights[rownum]:
                     heights[rownum] = height
@@ -143,7 +142,6 @@ This list is automatically generated from the latest ardupilot source code, and 
                 width = longest_line + 2  # +2 for leading/trailing ws
                 if width > widths[colnum]:
                     widths[colnum] = width
-                colnum += 1
         return (widths, heights)
 
     def tablify(self, rows, headings=None, rowheadings=None):
@@ -169,7 +167,7 @@ This list is automatically generated from the latest ardupilot source code, and 
                 rowheading = ""
             ret += self.tablify_row(rowheading, headings, widths, heights[0]) + "\n"
             ret += heading_bar + "\n"
-        for i in range(0, len(rows)):
+        for i in range(len(rows)):
             rowheading = None
             height = i
             if rowheadings is not None:
@@ -191,7 +189,7 @@ This list is automatically generated from the latest ardupilot source code, and 
 
     def emit(self, g):
         tag = '%s Parameters' % self.escape(g.reference)
-        reference = "parameters_" + g.reference
+        reference = f"parameters_{g.reference}"
 
         field_table_info = {
             "Values": {
@@ -229,7 +227,7 @@ This list is automatically generated from the latest ardupilot source code, and 
             # remove e.g. "ArduPlane:" from start of parameter name:
             reference = reference.split(":")[-1]
             if param_path:
-                reference += '__' + param_path
+                reference += f'__{param_path}'
 
             ret += """
 

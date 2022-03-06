@@ -96,10 +96,7 @@ class MagcalPanel(wx.Panel):
         for i, mask in enumerate(m.completion_mask):
             for j in range(8):
                 section = i * 8 + j
-                if mask & 1 << j:
-                    facecolor = self._filled_color
-                else:
-                    facecolor = self._empty_color
+                facecolor = self._filled_color if mask & 1 << j else self._empty_color
                 facecolors.append(facecolor)
         self._polygons_collection.set_facecolors(facecolors)
         self._canvas.draw()

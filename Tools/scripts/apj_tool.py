@@ -9,21 +9,17 @@ import argparse
 
 def to_ascii(s):
     '''get ascii string'''
-    if sys.version_info.major >= 3:
-        return str(s, 'ascii')
-    else:
-        return str(s)
+    return str(s, 'ascii') if sys.version_info.major >= 3 else str(s)
 
 def to_bytes(s):
     '''get bytes string'''
-    if sys.version_info.major >= 3:
-        if isinstance(s,bytes):
-            return s
-        if isinstance(s,int):
-            s = chr(s)
-        return bytes(s, 'ascii')
-    else:
+    if sys.version_info.major < 3:
         return bytes(s)
+    if isinstance(s,bytes):
+        return s
+    if isinstance(s,int):
+        s = chr(s)
+    return bytes(s, 'ascii')
     
 class embedded_defaults(object):
     '''class to manipulate embedded defaults in a firmware'''
@@ -41,65 +37,59 @@ class embedded_defaults(object):
 
     def load_binary(self):
         '''load firmware from binary file'''
-        f = open(self.filename,'rb')
-        self.firmware = f.read()
-        f.close()
+        with open(self.filename,'rb') as f:
+            self.firmware = f.read()
         print("Loaded binary file of length %u" % len(self.firmware))
 
     def load_abin(self):
         '''load firmware from abin file'''
-        f = open(self.filename,'r')
-        self.headers = []
-        while True:
-            line = f.readline().rstrip()
-            if line == '--':
-                break
-            self.headers.append(line)
-            if len(self.headers) > 50:
-                print("Error: too many abin headers")
-                sys.exit(1)
-        self.firmware = f.read()
-        f.close()
+        with open(self.filename,'r') as f:
+            self.headers = []
+            while True:
+                line = f.readline().rstrip()
+                if line == '--':
+                    break
+                self.headers.append(line)
+                if len(self.headers) > 50:
+                    print("Error: too many abin headers")
+                    sys.exit(1)
+            self.firmware = f.read()
         print("Loaded abin file of length %u" % len(self.firmware))
 
     def load_apj(self):
         '''load firmware from a json apj or px4 file'''
-        f = open(self.filename,'r')
-        self.fw_json = json.load(f)
-        f.close()
+        with open(self.filename,'r') as f:
+            self.fw_json = json.load(f)
         self.firmware = zlib.decompress(base64.b64decode(self.fw_json['image']))
         print("Loaded apj file of length %u" % len(self.firmware))
 
     def save_binary(self):
         '''save binary file'''
-        f = open(self.filename, 'wb')
-        f.write(self.firmware)
-        f.close()
+        with open(self.filename, 'wb') as f:
+            f.write(self.firmware)
         print("Saved binary of length %u" % len(self.firmware))
 
     def save_apj(self):
         '''save apj file'''
         self.fw_json['image'] = to_ascii(base64.b64encode(zlib.compress(self.firmware, 9)))
-        f = open(self.filename,'w')
-        json.dump(self.fw_json,f,indent=4)
-        f.truncate()
-        f.close()
+        with open(self.filename,'w') as f:
+            json.dump(self.fw_json,f,indent=4)
+            f.truncate()
         print("Saved apj of length %u" % len(self.firmware))
 
     def save_abin(self):
         '''save abin file'''
-        f = open(self.filename,'w')
-        for i in range(len(self.headers)):
-            line = self.headers[i]
-            if line.startswith('MD5: '):
-                h = hashlib.new('md5')
-                h.update(self.firmware)
-                f.write('MD5: %s\n' % h.hexdigest())
-            else:
-                f.write(line+'\n')
-        f.write('--\n')
-        f.write(self.firmware)
-        f.close()
+        with open(self.filename,'w') as f:
+            for i in range(len(self.headers)):
+                line = self.headers[i]
+                if line.startswith('MD5: '):
+                    h = hashlib.new('md5')
+                    h.update(self.firmware)
+                    f.write('MD5: %s\n' % h.hexdigest())
+                else:
+                    f.write(line+'\n')
+            f.write('--\n')
+            f.write(self.firmware)
         print("Saved abin of length %u" % len(self.firmware))
 
     def find(self):
@@ -150,9 +140,8 @@ class embedded_defaults(object):
     def set_file(self, filename):
         '''set defaults to contents of a file'''
         print("Setting defaults from %s" % filename)
-        f = open(filename, 'r')
-        contents = f.read()
-        f.close()
+        with open(filename, 'r') as f:
+            contents = f.read()
         # remove carriage returns from the file
         contents = contents.replace('\r','')
         self.set_contents(contents)
@@ -207,9 +196,8 @@ class embedded_defaults(object):
             a = (a[0], '.bin')
             binfile = ''.join(a)
             print("Extracting firmware to %s" % binfile)
-            f = open(binfile,'wb')
-            f.write(self.firmware)
-            f.close()
+            with open(binfile,'wb') as f:
+                f.write(self.firmware)
     
 
 def defaults_contents(firmware, ofs, length):

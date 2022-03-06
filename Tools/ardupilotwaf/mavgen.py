@@ -34,8 +34,7 @@ class mavgen(Task.Task):
             includes = root.findall('include')
             for i in includes:
                 path = i.text.strip()
-                n = node.parent.find_node(path)
-                if n:
+                if n := node.parent.find_node(path):
                     nodes.append(n)
                     if n not in queue:
                         queue.append(n)
@@ -45,7 +44,7 @@ class mavgen(Task.Task):
                     node.parent.path_from(entry_point.parent),
                     path
                 )
-                if not path in names:
+                if path not in names:
                     names.append(path)
 
         return nodes, names

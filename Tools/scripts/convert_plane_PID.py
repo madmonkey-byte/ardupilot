@@ -48,11 +48,8 @@ def process_file(fname):
             changed_param = True
             lines.append("%s %f" % (pname, value))
             return
-        # maintain separator if possible
-        sep = " "
         m = re.match("[A-Z_0-9]+([\s,]+)[0-9.-]+", lines[i])
-        if m is not None:
-            sep = m.group(1)
+        sep = m.group(1) if m is not None else " "
         changed_param = True
         lines[i] = "%s%s%f" % (pname, sep, value)
 

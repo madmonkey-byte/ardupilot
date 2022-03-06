@@ -67,7 +67,7 @@ class AutoTestSub(AutoTest):
         return os.path.realpath(__file__)
 
     def set_current_test_name(self, name):
-        self.current_test_name_directory = "ArduSub_Tests/" + name + "/"
+        self.current_test_name_directory = f"ArduSub_Tests/{name}/"
 
     def default_mode(self):
         return 'MANUAL'
@@ -115,10 +115,7 @@ class AutoTestSub(AutoTest):
         msg = self.mav.recv_match(type='GLOBAL_POSITION_INT', blocking=True, timeout=5)
         if msg is None:
             raise NotAchievedException("Did not get GLOBAL_POSITION_INT")
-        pwm = 1000
-        if msg.relative_alt/1000.0 < -5.5:
-            # need to g`o up, not down!
-            pwm = 2000
+        pwm = 2000 if msg.relative_alt < -5.5 * 1000.0 else 1000
         self.set_rc(Joystick.Throttle, pwm)
         self.wait_altitude(altitude_min=-6, altitude_max=-5)
         self.set_rc(Joystick.Throttle, 1500)

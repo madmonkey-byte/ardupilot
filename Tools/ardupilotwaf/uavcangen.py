@@ -73,4 +73,4 @@ def configure(cfg):
 
     env = cfg.env
     env.DSDL_COMPILER_DIR = cfg.srcnode.make_node('modules/uavcan/libuavcan/dsdl_compiler').abspath()
-    env.DSDL_COMPILER = env.DSDL_COMPILER_DIR + '/libuavcan_dsdlc'
+    env.DSDL_COMPILER = f'{env.DSDL_COMPILER_DIR}/libuavcan_dsdlc'

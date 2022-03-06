@@ -31,7 +31,7 @@ def _load_dynamic_env_data(bld):
             # relative paths from the make build are relative to BUILDROOT
             d = os.path.join(bld.env.BUILDROOT, d)
         d = os.path.normpath(d)
-        if not d in idirs2:
+        if d not in idirs2:
             idirs2.append(d)
     _dynamic_env_data['include_dirs'] = idirs2
 
@@ -111,7 +111,7 @@ class set_app_descriptor(Task.Task):
     def keyword(self):
         return "app_descriptor"
     def run(self):
-        if not 'APP_DESCRIPTOR' in self.env:
+        if 'APP_DESCRIPTOR' not in self.env:
             return
         if self.env.APP_DESCRIPTOR == 'MissionPlanner':
             descriptor = b'\x40\xa2\xe4\xf1\x64\x68\x91\x06'
@@ -169,9 +169,8 @@ class generate_apj(Task.Task):
             # file is idential for same git hash and compiler
             d["build_time"] = int(time.time())
         apj_file = self.outputs[0].abspath()
-        f = open(apj_file, "w")
-        f.write(json.dumps(d, indent=4))
-        f.close()
+        with open(apj_file, "w") as f:
+            f.write(json.dumps(d, indent=4))
 
 class build_abin(Task.Task):
     '''build an abin file for skyviper firmware upload via web UI'''
@@ -386,7 +385,7 @@ def generate_hwdef_h(env):
     if env.HWDEF_EXTRA:
         cmd += " '{0}'".format(env.HWDEF_EXTRA)
     if env.BOOTLOADER_OPTION:
-        cmd += " " + env.BOOTLOADER_OPTION
+        cmd += f" {env.BOOTLOADER_OPTION}"
     return subprocess.call(cmd, shell=True)
 
 def pre_build(bld):
@@ -415,9 +414,9 @@ def build(bld):
             bld.env.default_parameters,
             bld.env.HWDEF)
     if bld.env.HWDEF_EXTRA:
-        hwdef_rule += " " + bld.env.HWDEF_EXTRA
+        hwdef_rule += f" {bld.env.HWDEF_EXTRA}"
     if bld.env.BOOTLOADER_OPTION:
-        hwdef_rule += " " + bld.env.BOOTLOADER_OPTION
+        hwdef_rule += f" {bld.env.BOOTLOADER_OPTION}"
     bld(
         # build hwdef.h from hwdef.dat. This is needed after a waf clean
         source=bld.path.ant_glob(bld.env.HWDEF),
@@ -427,7 +426,7 @@ def build(bld):
                 bld.bldnode.find_or_declare('ldscript.ld'),
                 bld.bldnode.find_or_declare('hw.dat')]
     )
-    
+
     bld(
         # create the file modules/ChibiOS/include_dirs
         rule="touch Makefile && BUILDDIR=${BUILDDIR_REL} CHIBIOS=${CH_ROOT_REL} AP_HAL=${AP_HAL_REL} ${CHIBIOS_BUILD_FLAGS} ${CHIBIOS_BOARD_NAME} ${MAKE} pass -f '${BOARD_MK}'",

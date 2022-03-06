@@ -33,19 +33,11 @@ class AutoTestSailboat(AutoTestRover):
 
     def tests(self):
         '''return list of all tests'''
-        ret = ([])
-
-        ret.extend([
-            ("DriveRTL",
+        return list([("DriveRTL",
              "Drive an RTL Mission",
-             self.drive_rtl_mission),
-
-            ("DriveMission",
+             self.drive_rtl_mission), ("DriveMission",
              "Drive Mission %s" % "balancebot1.txt",
-             lambda: self.drive_mission("balancebot1.txt", strict=False)),
-
-        ])
-        return ret
+             lambda: self.drive_mission("balancebot1.txt", strict=False))])
 
     def default_mode(self):
         return 'MANUAL'

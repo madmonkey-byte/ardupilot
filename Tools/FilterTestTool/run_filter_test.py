@@ -14,6 +14,7 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
+
 __author__ = "Guglielmo Cassinelli"
 __contact__ = "gdguglie@gmail.com"
 
@@ -121,12 +122,9 @@ while True:
     if m is None:
         break
 
-    if m.fmt.name == "PARM":
-        # check param value
-
-        if m.Name in PARAMS_TO_CHECK:
-            print(m.Name, ", ", m.Value)
-            params[m.Name] = m.Value
+    if m.fmt.name == "PARM" and m.Name in PARAMS_TO_CHECK:
+        print(m.Name, ", ", m.Value)
+        params[m.Name] = m.Value
 
     try:
         m_time_sec = m.TimeUS / 1000000.
@@ -227,12 +225,11 @@ if "INS_ACCEL_FILTER" in params:
     DEFAULT_ACC_FILTER = params["INS_ACCEL_FILTER"]
 
 if "INS_NOTCH_ENABLE" in params:
-    if params["INS_NOTCH_ENABLE"] != 0:
-        if "INS_NOTCH_ATT" in params:
-            DEFAULT_GYR_NOTCH_ATTENUATION = params["INS_NOTCH_ATT"]
-    else:
+    if params["INS_NOTCH_ENABLE"] == 0:
         DEFAULT_GYR_NOTCH_ATTENUATION = 0
 
+    elif "INS_NOTCH_ATT" in params:
+        DEFAULT_GYR_NOTCH_ATTENUATION = params["INS_NOTCH_ATT"]
     if "INS_NOTCH_BW" in params:
         DEFAULT_GYR_NOTCH_BANDWIDTH = params["INS_NOTCH_BW"]
 
@@ -240,12 +237,11 @@ if "INS_NOTCH_ENABLE" in params:
         DEFAULT_GYR_NOTCH_FREQ = params["INS_NOTCH_FREQ"]
 
 if "INS_NOTCA_ENABLE" in params:
-    if params["INS_NOTCA_ENABLE"] != 0:
-        if "INS_NOTCA_ATT" in params:
-            DEFAULT_ACC_NOTCH_ATTENUATION = params["INS_NOTCA_ATT"]
-    else:
+    if params["INS_NOTCA_ENABLE"] == 0:
         DEFAULT_ACC_NOTCH_ATTENUATION = 0
 
+    elif "INS_NOTCA_ATT" in params:
+        DEFAULT_ACC_NOTCH_ATTENUATION = params["INS_NOTCA_ATT"]
     if "INS_NOTCA_BW" in params:
         DEFAULT_ACC_NOTCH_BANDWIDTH = params["INS_NOTCA_BW"]
 

@@ -87,12 +87,11 @@ class TestAutotune(Test):
                 # this should not be necessary!
                 def class_from_channel(c):
                     members = dict({'__init__':lambda x: setattr(x,i,None) for i in logdata.channels[c]})
-                    cls = type(\
+                    return type(\
                                'Channel__{:s}'.format(c),
                                (object,),
                                members
                                )
-                    return cls
 
                 # last wins
                 if a.success:

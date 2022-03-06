@@ -8,6 +8,7 @@ based on build_binaries.sh by Andrew Tridgell, March 2013
 AP_FLAKE8_CLEAN
 """
 
+
 from __future__ import print_function
 
 import datetime
@@ -26,10 +27,7 @@ import generate_manifest
 import gen_stable
 import build_binaries_history
 
-if sys.version_info[0] < 3:
-    running_python3 = False
-else:
-    running_python3 = True
+running_python3 = sys.version_info[0] >= 3
 
 
 def is_chibios_build(board):
@@ -80,9 +78,7 @@ class build_binaries(object):
 
     def board_options(self, board):
         '''return board-specific options'''
-        if board == "bebop":
-            return ["--static"]
-        return []
+        return ["--static"] if board == "bebop" else []
 
     def run_waf(self, args, compiler=None):
         if os.path.exists("waf"):
@@ -96,14 +92,13 @@ class build_binaries(object):
             # default to $HOME/arm-gcc, but allow for any path with AP_GCC_HOME environment variable
             gcc_home = os.environ.get("AP_GCC_HOME", os.path.join(os.environ["HOME"], "arm-gcc"))
             gcc_path = os.path.join(gcc_home, compiler, "bin")
-            if os.path.exists(gcc_path):
-                # setup PATH to point at the right compiler, and setup to use ccache
-                env = os.environ.copy()
-                env["PATH"] = gcc_path + ":" + env["PATH"]
-                env["CC"] = "ccache arm-none-eabi-gcc"
-                env["CXX"] = "ccache arm-none-eabi-g++"
-            else:
+            if not os.path.exists(gcc_path):
                 raise Exception("BB-WAF: Missing compiler %s" % gcc_path)
+            # setup PATH to point at the right compiler, and setup to use ccache
+            env = os.environ.copy()
+            env["PATH"] = f'{gcc_path}:' + env["PATH"]
+            env["CC"] = "ccache arm-none-eabi-gcc"
+            env["CXX"] = "ccache arm-none-eabi-g++"
         self.run_program("BB-WAF", cmd_list, env=env)
 
     def run_program(self, prefix, cmd_list, show_output=True, env=None):
@@ -227,10 +222,16 @@ is bob we will attempt to checkout bob-AVR'''
 
     def skip_frame(self, board, frame):
         '''returns true if this board/frame combination should not be built'''
-        if frame == "heli":
-            if board in ["bebop", "aerofc-v1", "skyviper-v2450", "CubeSolo", "CubeGreen-solo", 'skyviper-journey']:
-                self.progress("Skipping heli build for %s" % board)
-                return True
+        if frame == "heli" and board in [
+            "bebop",
+            "aerofc-v1",
+            "skyviper-v2450",
+            "CubeSolo",
+            "CubeGreen-solo",
+            'skyviper-journey',
+        ]:
+            self.progress("Skipping heli build for %s" % board)
+            return True
         return False
 
     def first_line_of_filepath(self, filepath):
@@ -388,20 +389,15 @@ is bob we will attempt to checkout bob-AVR'''
                       (vehicle, tag, os.getcwd()))
 
         board_count = len(boards)
-        count = 0
-        for board in sorted(boards, key=str.lower):
+        for count, board in enumerate(sorted(boards, key=str.lower), start=1):
             now = datetime.datetime.now()
-            count += 1
             self.progress("[%u/%u] Building board: %s at %s" %
                           (count, board_count, board, str(now)))
             for frame in frames:
                 if frame is not None:
                     self.progress("Considering frame %s for board %s" %
                                   (frame, board))
-                if frame is None:
-                    framesuffix = ""
-                else:
-                    framesuffix = "-%s" % frame
+                framesuffix = "" if frame is None else "-%s" % frame
                 if not self.checkout(vehicle, tag, board, frame, submodule_update=False):
                     msg = ("Failed checkout of %s %s %s %s" %
                            (vehicle, board, tag, frame,))
@@ -489,7 +485,7 @@ is bob we will attempt to checkout bob-AVR'''
                 if not os.path.exists(bare_path):
                     raise Exception("No elf file?!")
                 # only copy the elf if we don't have other files to copy
-                if len(files_to_copy) == 0:
+                if not files_to_copy:
                     files_to_copy.append(bare_path)
 
                 for path in files_to_copy:
@@ -625,8 +621,15 @@ is bob we will attempt to checkout bob-AVR'''
 
     def build_arducopter(self, tag):
         '''build Copter binaries'''
-        boards = []
-        boards.extend(["skyviper-v2450", "aerofc-v1", "bebop", "CubeSolo", "CubeGreen-solo", "skyviper-journey"])
+        boards = [
+            "skyviper-v2450",
+            "aerofc-v1",
+            "bebop",
+            "CubeSolo",
+            "CubeGreen-solo",
+            "skyviper-journey",
+        ]
+
         boards.extend(self.common_boards()[:])
         self.build_vehicle(tag,
                            "ArduCopter",

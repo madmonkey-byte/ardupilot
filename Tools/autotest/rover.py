@@ -64,7 +64,7 @@ class AutoTestRover(AutoTest):
         return os.path.realpath(__file__)
 
     def set_current_test_name(self, name):
-        self.current_test_name_directory = "ArduRover_Tests/" + name + "/"
+        self.current_test_name_directory = f"ArduRover_Tests/{name}/"
 
     def sitl_start_location(self):
         return SITL_START_LOCATION
@@ -171,7 +171,7 @@ class AutoTestRover(AutoTest):
 
         self.progress("Driving left circuit")
         # do 4 turns
-        for i in range(0, 4):
+        for i in range(4):
             # hard left
             self.progress("Starting turn %u" % i)
             self.set_rc(1, 1000)
@@ -559,9 +559,9 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         # current Rover blows straight past the home position and ends
         # up ~6m past the home point.
         home_distance = self.distance_to_home()
-        home_distance_min = 5.5
         home_distance_max = self.drive_rtl_mission_max_distance_from_home()
         if home_distance > home_distance_max:
+            home_distance_min = 5.5
             raise NotAchievedException(
                 "Did not stop near home (%f metres distant (%f > want > %f))" %
                 (home_distance, home_distance_min, home_distance_max))
@@ -825,6 +825,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             throttle_override = 1500
 
             tstart = self.get_sim_time_cached()
+            want_speed = 2.0
             while True:
                 if self.get_sim_time_cached() - tstart > 10:
                     raise AutoTestTimeoutException("Did not reach speed")
@@ -842,7 +843,6 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                     65535) # chan8_raw
 
                 m = self.mav.recv_match(type='VFR_HUD', blocking=True)
-                want_speed = 2.0
                 self.progress("Speed=%f want=<%f" % (m.groundspeed, want_speed))
                 if m.groundspeed < want_speed:
                     break
@@ -854,6 +854,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
 
             throttle_override = 1500
             tstart = self.get_sim_time_cached()
+            want_speed = 5.0
             while True:
                 if self.get_sim_time_cached() - tstart > 10:
                     raise AutoTestTimeoutException("Did not speed back up")
@@ -871,7 +872,6 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                     65535) # chan8_raw
 
                 m = self.mav.recv_match(type='VFR_HUD', blocking=True)
-                want_speed = 5.0
                 self.progress("Speed=%f want=>%f" % (m.groundspeed, want_speed))
 
                 if m.groundspeed > want_speed:
@@ -1099,6 +1099,8 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             expected_throttle = 36 # in VFR_HUD, corresponding to normal_rc_throttle adjusted for channel min/max
 
             tstart = self.get_sim_time_cached()
+            want_speed = 5.0
+
             while True:
                 if self.get_sim_time_cached() - tstart > 10:
                     raise AutoTestTimeoutException("Did not stop")
@@ -1112,8 +1114,6 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                     0) # button mask
 
                 m = self.mav.recv_match(type='VFR_HUD', blocking=True)
-                want_speed = 5.0
-
                 self.progress("Speed=%f want=>%f  throttle=%u want=%u" %
                               (m.groundspeed, want_speed, m.throttle, expected_throttle))
                 if m.groundspeed > want_speed and m.throttle == expected_throttle:
@@ -1155,16 +1155,14 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                 dist_travelled = self.get_distance_int(prev_cf, cf)
                 prev_cf = cf
                 mc = self.mav.messages.get("MISSION_CURRENT", None)
-                if mc is None:
+                if mc is None or mc.seq not in [2, 4, 5]:
                     continue
                 elif mc.seq == 2:
                     expected_distance = 2
                 elif mc.seq == 4:
                     expected_distance = 5
-                elif mc.seq == 5:
-                    break
                 else:
-                    continue
+                    break
                 self.progress("Expected distance %f got %f" %
                               (expected_distance, dist_travelled))
                 error = abs(expected_distance - dist_travelled)
@@ -1426,9 +1424,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         ]
 
     def fence_which_exceeds_storage_space(self, target_system=1, target_component=1):
-        ret = []
-        for i in range(0, 60):
-            ret.append(self.mav.mav.mission_item_int_encode(
+        return [self.mav.mav.mission_item_int_encode(
                 target_system,
                 target_component,
                 i, # seq
@@ -1443,9 +1439,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                 int(1.0 * 1e7), # latitude
                 int(1.0017 * 1e7), # longitude
                 31.0000, # altitude
-                mavutil.mavlink.MAV_MISSION_TYPE_FENCE),
-            )
-        return ret
+                mavutil.mavlink.MAV_MISSION_TYPE_FENCE) for i in range(60)]
 
     def fences_which_should_not_upload(self, target_system=1, target_component=1):
         return [
@@ -1598,7 +1592,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
 
     def fence_with_many_exclusion_circles(self, count=50, target_system=1, target_component=1):
         ret = []
-        for i in range(0, count):
+        for i in range(count):
             lat_deg = 1.0003 + count/10
             lng_deg = 1.0002 + count/10
             item = self.mav.mav.mission_item_int_encode(
@@ -1623,9 +1617,9 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
     def fence_with_many_exclusion_polyfences(self, target_system=1, target_component=1):
         ret = []
         seq = 0
-        for fencenum in range(0, 4):
+        for fencenum in range(4):
             pointcount = fencenum + 6
-            for p in range(0, pointcount):
+            for p in range(pointcount):
                 lat_deg = 1.0003 + p/10 + fencenum/100
                 lng_deg = 1.0002 + p/10 + fencenum/100
                 item = self.mav.mav.mission_item_int_encode(
@@ -2198,7 +2192,6 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
 
             if now - tstart > timeout:
                 raise AutoTestTimeoutException("Didn't complete")
-            magic_waypoint = 3
             mc = self.mav.recv_match(type=["MISSION_CURRENT", "STATUSTEXT"],
                                      blocking=False)
             if mc is not None:
@@ -2207,6 +2200,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                     if "Mission Complete" in mc.text:
                         break
                     continue
+                magic_waypoint = 3
                 if mc.seq == magic_waypoint:
                     print("At magic waypoint")
                     if magic_waypoint_tstart == 0:
@@ -2271,9 +2265,11 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                 self.progress("No messages")
                 continue
 #            self.progress("Received (%s)" % str(m))
-            if m.get_type() == "MISSION_ACK":
-                if m.type != mavutil.mavlink.MAV_MISSION_ACCEPTED:
-                    raise NotAchievedException("Expected MAV_MISSION_ACCEPTED, got (%s)" % m)
+            if (
+                m.get_type() == "MISSION_ACK"
+                and m.type != mavutil.mavlink.MAV_MISSION_ACCEPTED
+            ):
+                raise NotAchievedException("Expected MAV_MISSION_ACCEPTED, got (%s)" % m)
             if m.get_type() == "MISSION_COUNT":
                 break
         if m.target_system != expected_target_system:
@@ -2397,10 +2393,6 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
 
     def mavproxy_can_do_mision_item_protocols(self):
         return False
-        if not self.mavproxy_version_gt(1, 8, 12):
-            self.progress("MAVProxy is too old; skipping tests")
-            return False
-        return True
 
     def check_rally_items_same(self, want, got, epsilon=None):
         check_atts = ['mission_type', 'command', 'x', 'y', 'z', 'seq', 'param1']

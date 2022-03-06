@@ -15,7 +15,7 @@ class TestVCC(Test):
         self.result = TestResult()
         self.result.status = TestResult.StatusType.GOOD
 
-        if not "CURR" in logdata.channels:
+        if "CURR" not in logdata.channels:
             self.result.status = TestResult.StatusType.UNKNOWN
             self.result.statusMessage = "No CURR log data"
             return

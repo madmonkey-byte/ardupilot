@@ -158,11 +158,11 @@ class Board:
 
         if cfg.options.assert_cc_version:
             cfg.msg("Checking compiler", "%s %s"  % (cfg.options.assert_cc_version, ".".join(cfg.env.CC_VERSION)))
-            have_version = cfg.env.COMPILER_CXX+"-"+'.'.join(list(cfg.env.CC_VERSION))
+            have_version = f'{cfg.env.COMPILER_CXX}-' + '.'.join(list(cfg.env.CC_VERSION))
             want_version = cfg.options.assert_cc_version
             if have_version != want_version:
                 cfg.fatal("cc version mismatch: %s should be %s" % (have_version, want_version))
-        
+
         if 'clang' in cfg.env.COMPILER_CC:
             env.CFLAGS += [
                 '-fcolor-diagnostics',
@@ -354,14 +354,14 @@ class Board:
 
         if cfg.options.postype_single:
             env.CXXFLAGS += ['-DHAL_WITH_POSTYPE_DOUBLE=0']
-            
+
         if cfg.options.osd or cfg.options.osd_fonts:
             env.CXXFLAGS += ['-DOSD_ENABLED=1', '-DHAL_MSP_ENABLED=1']
 
         if cfg.options.osd_fonts:
             for f in os.listdir('libraries/AP_OSD/fonts'):
                 if fnmatch.fnmatch(f, "font*bin"):
-                    env.ROMFS_FILES += [(f,'libraries/AP_OSD/fonts/'+f)]
+                    env.ROMFS_FILES += [(f, f'libraries/AP_OSD/fonts/{f}')]
 
         if cfg.options.ekf_double:
             env.CXXFLAGS += ['-DHAL_WITH_EKF_DOUBLE=1']
@@ -447,7 +447,7 @@ Please use a replacement build as follows:
 ''' % ctx.env.BOARD)
 
         boards = _board_classes.keys()
-        if not ctx.env.BOARD in boards:
+        if ctx.env.BOARD not in boards:
             ctx.fatal("Invalid board '%s': choices are %s" % (ctx.env.BOARD, ', '.join(sorted(boards, key=str.lower))))
         _board = _board_classes[ctx.env.BOARD]()
     return _board
@@ -459,10 +459,7 @@ Please use a replacement build as follows:
 class sitl(Board):
 
     def __init__(self):
-        if Utils.unversioned_sys_platform().startswith("linux"):
-            self.with_can = True
-        else:
-            self.with_can = False
+        self.with_can = bool(Utils.unversioned_sys_platform().startswith("linux"))
 
     def configure_env(self, cfg, env):
         super(sitl, self).configure_env(cfg, env)
@@ -796,8 +793,7 @@ class chibios(Board):
         '''pre-build hook that gets called before dynamic sources'''
         from waflib.Context import load_tool
         module = load_tool('chibios', [], with_sys_path=True)
-        fun = getattr(module, 'pre_build', None)
-        if fun:
+        if fun := getattr(module, 'pre_build', None):
             fun(bld)
         super(chibios, self).pre_build(bld)
 

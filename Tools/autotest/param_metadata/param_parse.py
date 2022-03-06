@@ -84,14 +84,11 @@ def find_vehicle_parameter_filepath(vehicle_name):
     raise ValueError("Unable to find parameters file for (%s)" % vehicle_name)
 
 
-libraries = []
-
 # AP_Vehicle also has parameters rooted at "", but isn't referenced
 # from the vehicle in any way:
 ap_vehicle_lib = Library("") # the "" is tacked onto the front of param name
 setattr(ap_vehicle_lib, "Path", os.path.join('..', 'libraries', 'AP_Vehicle', 'AP_Vehicle.cpp'))
-libraries.append(ap_vehicle_lib)
-
+libraries = [ap_vehicle_lib]
 error_count = 0
 current_param = None
 current_file = None
@@ -137,11 +134,10 @@ debug('Found vehicle type %s' % vehicle.name)
 
 def process_vehicle(vehicle):
     debug("===\n\n\nProcessing %s" % vehicle.name)
-    current_file = vehicle.path+'/Parameters.cpp'
+    current_file = f'{vehicle.path}/Parameters.cpp'
 
-    f = open(current_file)
-    p_text = f.read()
-    f.close()
+    with open(current_file) as f:
+        p_text = f.read()
     group_matches = prog_groups.findall(p_text)
 
     debug(group_matches)
@@ -153,13 +149,10 @@ def process_vehicle(vehicle):
                 setattr(lib, field[0], field[1])
             else:
                 error("group: unknown parameter metadata field '%s'" % field[0])
-        if not any(lib.name == parsed_l.name for parsed_l in libraries):
+        if all(lib.name != parsed_l.name for parsed_l in libraries):
             libraries.append(lib)
 
-    param_matches = []
-    if not args.emit_sitl:
-        param_matches = prog_param.findall(p_text)
-
+    param_matches = prog_param.findall(p_text) if not args.emit_sitl else []
     for param_match in param_matches:
         (only_vehicles, param_name, field_text) = (param_match[0],
                                                    param_match[1],
@@ -171,8 +164,8 @@ def process_vehicle(vehicle):
                     raise ValueError("Invalid only_vehicle %s" % only_vehicle)
             if vehicle.truename not in only_vehicles_list:
                 continue
-        p = Parameter(vehicle.reference+":"+param_name, current_file)
-        debug(p.name + ' ')
+        p = Parameter(f'{vehicle.reference}:{param_name}', current_file)
+        debug(f'{p.name} ')
         global current_param
         current_param = p.name
         fields = prog_param_fields.findall(field_text)
@@ -222,9 +215,8 @@ def process_library(vehicle, library, pathprefix=None):
         else:
             libraryfname = os.path.normpath(os.path.join(apm_path + '/libraries/' + path))
         if path and os.path.exists(libraryfname):
-            f = open(libraryfname)
-            p_text = f.read()
-            f.close()
+            with open(libraryfname) as f:
+                p_text = f.read()
         else:
             error("Path %s not found for library %s (fname=%s)" % (path, library.name, libraryfname))
             continue
@@ -243,7 +235,7 @@ def process_library(vehicle, library, pathprefix=None):
                 if vehicle.name not in only_vehicles_list:
                     continue
             p = Parameter(library.name+param_name, current_file)
-            debug(p.name + ' ')
+            debug(f'{p.name} ')
             global current_param
             current_param = p.name
             fields = prog_param_fields.findall(field_text)
@@ -281,16 +273,16 @@ def process_library(vehicle, library, pathprefix=None):
                     getattr(p, 'Bitmask', None) is not None):
                 error("Both @Values and @Bitmask present")
 
-            if (getattr(p, 'Values', None) is None and
-                    getattr(p, 'Bitmask', None) is None):
-                # values and Bitmask available for this vehicle
-                if seen_values_or_bitmask_for_other_vehicle:
-                    # we've (e.g.) seen @Values{Copter} when we're
-                    # processing for Rover, and haven't seen either
-                    # @Values: or @Vales{Rover} - so we omit this
-                    # parameter on the assumption that it is not
-                    # applicable for this vehicle.
-                    continue
+            if (
+                getattr(p, 'Values', None) is None
+                and getattr(p, 'Bitmask', None) is None
+            ) and seen_values_or_bitmask_for_other_vehicle:
+                # we've (e.g.) seen @Values{Copter} when we're
+                # processing for Rover, and haven't seen either
+                # @Values: or @Vales{Rover} - so we omit this
+                # parameter on the assumption that it is not
+                # applicable for this vehicle.
+                continue
 
             p.path = path # Add path. Later deleted - only used for duplicates
             library.params.append(p)
@@ -298,7 +290,7 @@ def process_library(vehicle, library, pathprefix=None):
         group_matches = prog_groups.findall(p_text)
         debug("Found %u groups" % len(group_matches))
         debug(group_matches)
-        done_groups = dict()
+        done_groups = {}
         for group_match in group_matches:
             group = group_match[0]
             debug("Group: %s" % group)
@@ -319,7 +311,7 @@ def process_library(vehicle, library, pathprefix=None):
                     setattr(lib, field[0], field[1])
                 else:
                     error("unknown parameter metadata field '%s'" % field[0])
-            if not any(lib.name == parsed_l.name for parsed_l in libraries):
+            if all(lib.name != parsed_l.name for parsed_l in libraries):
                 if do_append:
                     lib.set_name(library.name + lib.name)
                 debug("Group name: %s" % lib.name)
@@ -355,19 +347,20 @@ def is_number(numberString):
 
 
 def clean_param(param):
-    if (hasattr(param, "Values")):
-        valueList = param.Values.split(",")
-        new_valueList = []
-        for i in valueList:
-            (start, sep, end) = i.partition(":")
-            if sep != ":":
-                raise ValueError("Expected a colon seperator in (%s)" % (i,))
-            if len(end) == 0:
-                raise ValueError("Expected a colon-separated string, got (%s)" % i)
-            end = end.strip()
-            start = start.strip()
-            new_valueList.append(":".join([start, end]))
-        param.Values = ",".join(new_valueList)
+    if not (hasattr(param, "Values")):
+        return
+    valueList = param.Values.split(",")
+    new_valueList = []
+    for i in valueList:
+        (start, sep, end) = i.partition(":")
+        if sep != ":":
+            raise ValueError("Expected a colon seperator in (%s)" % (i,))
+        if len(end) == 0:
+            raise ValueError("Expected a colon-separated string, got (%s)" % i)
+        end = end.strip()
+        start = start.strip()
+        new_valueList.append(":".join([start, end]))
+    param.Values = ",".join(new_valueList)
 
 
 def validate(param):
@@ -403,17 +396,23 @@ def validate(param):
         if (len(values) != len(set(values))):
             error("Duplicate values found")
     # Validate units
-    if (hasattr(param, "Units")):
-        if (param.__dict__["Units"] != "") and (param.__dict__["Units"] not in known_units):
-            error("unknown units field '%s'" % param.__dict__["Units"])
+    if (
+        (hasattr(param, "Units"))
+        and (param.__dict__["Units"] != "")
+        and (param.__dict__["Units"] not in known_units)
+    ):
+        error("unknown units field '%s'" % param.__dict__["Units"])
     # Validate User
-    if (hasattr(param, "User")):
-        if param.User.strip() not in ["Standard", "Advanced"]:
-            error("unknown user (%s)" % param.User.strip())
+    if (hasattr(param, "User")) and param.User.strip() not in [
+        "Standard",
+        "Advanced",
+    ]:
+        error("unknown user (%s)" % param.User.strip())
 
-    if (hasattr(param, "Description")):
-        if not param.Description or not param.Description.strip():
-            error("Empty Description (%s)" % param)
+    if (hasattr(param, "Description")) and (
+        not param.Description or not param.Description.strip()
+    ):
+        error("Empty Description (%s)" % param)
 
 
 for param in vehicle.params:
@@ -471,10 +470,11 @@ except ImportError:
         print("Unable to emit EDN, install edn_format and pytz if edn is desired")
 
 # filter to just the ones we want to emit:
-emitters_to_use = []
-for emitter_name in all_emitters.keys():
-    if args.output_format == 'all' or args.output_format == emitter_name:
-        emitters_to_use.append(emitter_name)
+emitters_to_use = [
+    emitter_name
+    for emitter_name in all_emitters
+    if args.output_format in ['all', emitter_name]
+]
 
 if args.emit_sitl:
     # only generate rst for SITL for now:
