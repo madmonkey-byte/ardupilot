@@ -20,7 +20,7 @@ def parse_git_version(gfile):
         return None
     vers = a[1].strip()
     if vers[-1].isdigit():
-        return vers+"-FIRMWARE_VERSION_TYPE_OFFICIAL"
+        return f'{vers}-FIRMWARE_VERSION_TYPE_OFFICIAL'
     print("Bad vers %s in %s" % (vers, gfile))
     return None
 

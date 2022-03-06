@@ -162,11 +162,8 @@ def create_checked_logs():
     else:
         pattern = os.path.join(opts.logdir, "*.bin")
         full_file_list = glob.glob(pattern)
-    file_list = []
-    for f in full_file_list:
-        if not f.endswith("-checked.bin"):
-            file_list.append(f)
-    if len(file_list) == 0:
+    file_list = [f for f in full_file_list if not f.endswith("-checked.bin")]
+    if not file_list:
         print("No files to process")
         sys.exit(1)
     for f in file_list:
@@ -181,7 +178,7 @@ def create_checked_logs():
             sys.exit(1)
         outlog = list(changed)[0]
         name, ext = os.path.splitext(f)
-        newname = name + '-checked.bin'
+        newname = f'{name}-checked.bin'
         os.rename(outlog, newname)
         print("Created %s" % newname)
 

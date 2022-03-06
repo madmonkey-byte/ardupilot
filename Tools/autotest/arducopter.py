@@ -70,7 +70,7 @@ class AutoTestCopter(AutoTest):
         return os.path.realpath(__file__)
 
     def set_current_test_name(self, name):
-        self.current_test_name_directory = "ArduCopter_Tests/" + name + "/"
+        self.current_test_name_directory = f"ArduCopter_Tests/{name}/"
 
     def sitl_start_location(self):
         return SITL_START_LOCATION
@@ -406,8 +406,7 @@ class AutoTestCopter(AutoTest):
         self.set_rc(3, 1200)
         time_left = timeout - (self.get_sim_time() - tstart)
         self.progress("timeleft = %u" % time_left)
-        if time_left < 20:
-            time_left = 20
+        time_left = max(time_left, 20)
         self.wait_altitude(-10, 10, timeout=time_left, relative=True)
         self.set_rc(3, 1500)
         self.save_wp()
@@ -447,18 +446,20 @@ class AutoTestCopter(AutoTest):
             home = ""
             alt_valid = alt <= 1
             distance_valid = home_distance < distance_max
-            if check_alt:
-                if alt_valid and distance_valid:
-                    home = "HOME"
-            else:
-                if distance_valid:
-                    home = "HOME"
+            if (
+                check_alt
+                and alt_valid
+                and distance_valid
+                or not check_alt
+                and distance_valid
+            ):
+                home = "HOME"
             self.progress("Alt: %.02f  HomeDist: %.02f %s" %
                           (alt, home_distance, home))
 
             # our post-condition is that we are disarmed:
             if not self.armed():
-                if home == "":
+                if not home:
                     raise NotAchievedException("Did not get home")
                 # success!
                 return
@@ -1185,14 +1186,12 @@ class AutoTestCopter(AutoTest):
             want_max = inner_radius + 1 # allow 1m either way
             self.progress("Push: distance=%f %f<want<%f" %
                           (distance, want_min, want_max))
-            if distance < want_min:
-                if failed_min is False:
-                    self.progress("Failed min")
-                    failed_min = True
-            if distance > want_max:
-                if failed_max is False:
-                    self.progress("Failed max")
-                    failed_max = True
+            if distance < want_min and not failed_min:
+                self.progress("Failed min")
+                failed_min = True
+            if distance > want_max and not failed_max:
+                self.progress("Failed max")
+                failed_max = True
         if failed_min and failed_max:
             raise NotAchievedException("Failed both min and max checks.  Clever")
         if failed_min:
@@ -2202,16 +2201,38 @@ class AutoTestCopter(AutoTest):
 
         self.context_stop_collecting('STATUSTEXT')
 
-        GPS_Order_Tests = [[gps2_nodeid, gps2_nodeid, gps2_nodeid, 0,
-                            "PreArm: Same Node Id {} set for multiple GPS".format(gps2_nodeid)],
-                           [gps1_nodeid, int(gps2_nodeid/2), gps1_nodeid, 0,
-                            "Selected GPS Node {} not set as instance {}".format(int(gps2_nodeid/2), 2)],
-                           [int(gps1_nodeid/2), gps2_nodeid, 0, gps2_nodeid,
-                            "Selected GPS Node {} not set as instance {}".format(int(gps1_nodeid/2), 1)],
-                           [gps1_nodeid, gps2_nodeid, gps1_nodeid, gps2_nodeid, ""],
-                           [gps2_nodeid, gps1_nodeid, gps2_nodeid, gps1_nodeid, ""],
-                           [gps1_nodeid, 0, gps1_nodeid, gps2_nodeid, ""],
-                           [0, gps2_nodeid, gps1_nodeid, gps2_nodeid, ""]]
+        GPS_Order_Tests = [
+            [
+                gps2_nodeid,
+                gps2_nodeid,
+                gps2_nodeid,
+                0,
+                "PreArm: Same Node Id {} set for multiple GPS".format(gps2_nodeid),
+            ],
+            [
+                gps1_nodeid,
+                gps2_nodeid // 2,
+                gps1_nodeid,
+                0,
+                "Selected GPS Node {} not set as instance {}".format(
+                    gps2_nodeid // 2, 2
+                ),
+            ],
+            [
+                gps1_nodeid // 2,
+                gps2_nodeid,
+                0,
+                gps2_nodeid,
+                "Selected GPS Node {} not set as instance {}".format(
+                    gps1_nodeid // 2, 1
+                ),
+            ],
+            [gps1_nodeid, gps2_nodeid, gps1_nodeid, gps2_nodeid, ""],
+            [gps2_nodeid, gps1_nodeid, gps2_nodeid, gps1_nodeid, ""],
+            [gps1_nodeid, 0, gps1_nodeid, gps2_nodeid, ""],
+            [0, gps2_nodeid, gps1_nodeid, gps2_nodeid, ""],
+        ]
+
         for case in GPS_Order_Tests:
             self.progress("############################### Trying Case: " + str(case))
             self.set_parameter("GPS1_CAN_OVRIDE", case[0])
@@ -2232,22 +2253,20 @@ class AutoTestCopter(AutoTest):
 
             self.context_stop_collecting('STATUSTEXT')
             self.change_mode('LOITER')
-            if case[2] == 0 and case[3] == 0:
-                if gps1_det_text or gps2_det_text:
-                    raise NotAchievedException("Failed ordering for requested CASE:", case)
+            if case[2] == 0 and case[3] == 0 and (gps1_det_text or gps2_det_text):
+                raise NotAchievedException("Failed ordering for requested CASE:", case)
 
-            if case[2] == 0 or case[3] == 0:
-                if bool(gps1_det_text is not None) == bool(gps2_det_text is not None):
-                    print(gps1_det_text)
-                    print(gps2_det_text)
-                    raise NotAchievedException("Failed ordering for requested CASE:", case)
+            if (case[2] == 0 or case[3] == 0) and bool(
+                gps1_det_text is not None
+            ) == bool(gps2_det_text is not None):
+                print(gps1_det_text)
+                print(gps2_det_text)
+                raise NotAchievedException("Failed ordering for requested CASE:", case)
 
-            if gps1_det_text:
-                if case[2] != int(gps1_det_text.split('-')[1]):
-                    raise NotAchievedException("Failed ordering for requested CASE:", case)
-            if gps2_det_text:
-                if case[3] != int(gps2_det_text.split('-')[1]):
-                    raise NotAchievedException("Failed ordering for requested CASE:", case)
+            if gps1_det_text and case[2] != int(gps1_det_text.split('-')[1]):
+                raise NotAchievedException("Failed ordering for requested CASE:", case)
+            if gps2_det_text and case[3] != int(gps2_det_text.split('-')[1]):
+                raise NotAchievedException("Failed ordering for requested CASE:", case)
             if len(case[4]):
                 self.context_collect('STATUSTEXT')
                 self.run_cmd(mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
@@ -2331,7 +2350,7 @@ class AutoTestCopter(AutoTest):
                              servo.servo8_raw]
 
                 self.progress("PWM output per motor")
-                for i, pwm in enumerate(servo_pwm[0:servo_count]):
+                for i, pwm in enumerate(servo_pwm[:servo_count]):
                     if pwm > 1900:
                         state = "oversaturated"
                     elif pwm < 1200:
@@ -2761,9 +2780,8 @@ class AutoTestCopter(AutoTest):
                                   (m.seq, dist, at_delay_item))
                 last_mission_current_msg = self.get_sim_time_cached()
                 last_seq = m.seq
-            if m.seq > 3:
-                if count_stop == -1:
-                    count_stop = now
+            if m.seq > 3 and count_stop == -1:
+                count_stop = now
         calculated_delay = count_stop - count_start
         want_delay = 59 # should reflect what's in the mission file
         self.progress("Stopped for %u seconds (want >=%u seconds)" %

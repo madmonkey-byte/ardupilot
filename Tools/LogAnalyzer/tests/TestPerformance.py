@@ -50,12 +50,12 @@ class TestPerformance(Test):
             (line, maxT)  = logdata.channels["PM"]["MaxT"].listData[i]
             percentSlow = (nLon / float(nLoop)) * 100
             if percentSlow > 6.0:
-                slowLoopLineCount = slowLoopLineCount + 1
+                slowLoopLineCount += 1
                 if percentSlow > maxPercentSlow:
                     maxPercentSlow = percentSlow
                     maxPercentSlowLine = line
-            #if (maxT > 13000) and line not in ignoreMaxTLines:
-            #   print("MaxT of %d detected on line %d" % (maxT,line))
+                #if (maxT > 13000) and line not in ignoreMaxTLines:
+                #   print("MaxT of %d detected on line %d" % (maxT,line))
         if (maxPercentSlow > 10) or (slowLoopLineCount > 6):
             self.result.status = TestResult.StatusType.FAIL
             self.result.statusMessage = "%d slow loop lines found, max %.2f%% on line %d" % (slowLoopLineCount,maxPercentSlow,maxPercentSlowLine)

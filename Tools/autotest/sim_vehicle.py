@@ -62,28 +62,13 @@ class CompatOptionParser(optparse.OptionParser):
 
         # taken and modified from from optparse.py's format_option
         def format_option_preserve_nl(self, option):
-            # The help for each option consists of two parts:
-            #   * the opt strings and metavars
-            #     eg. ("-x", or "-fFILENAME, --file=FILENAME")
-            #   * the user-supplied help string
-            #     eg. ("turn on expert mode", "read data from FILENAME")
-            #
-            # If possible, we write both of these on the same line:
-            #   -x      turn on expert mode
-            #
-            # But if the opt string list is too long, we put the help
-            # string on a second line, indented to the same column it would
-            # start in if it fit on the first line.
-            #   -fFILENAME, --file=FILENAME
-            #           read data from FILENAME
-            result = []
             opts = self.option_strings[option]
             opt_width = self.help_position - self.current_indent - 2
             if len(opts) > opt_width:
                 opts = "%*s%s\n" % (self.current_indent, "", opts)
             else:                       # start help on same line as opts
                 opts = "%*s%-*s  " % (self.current_indent, "", opt_width, opts)
-            result.append(opts)
+            result = [opts]
             if option.help:
                 help_text = self.expand_default(option)
                 tw = textwrap.TextWrapper(replace_whitespace=False,
@@ -102,7 +87,7 @@ class CompatOptionParser(optparse.OptionParser):
             return "".join(result)
 
         def format_option(self, option):
-            if str(option).find('frame') != -1:
+            if 'frame' in str(option):
                 return self.format_option_preserve_nl(option)
             return optparse.IndentedHelpFormatter.format_option(self, option)
 
@@ -152,9 +137,10 @@ def cygwin_pidof(proc_name):
     """ Thanks to kata198 for this:
     https://github.com/kata198/cygwin-ps-misc/blob/master/pidof
     """
-    pipe = subprocess.Popen("ps -ea | grep " + proc_name,
-                            shell=True,
-                            stdout=subprocess.PIPE)
+    pipe = subprocess.Popen(
+        f"ps -ea | grep {proc_name}", shell=True, stdout=subprocess.PIPE
+    )
+
     output_lines = pipe.stdout.read().decode('utf-8').replace("\r", "").split("\n")
     ret = pipe.wait()
     pids = []
@@ -211,9 +197,12 @@ def kill_tasks_psutil(victims):
         pdict = proc.as_dict(attrs=['environ', 'status'])
         if pdict['status'] == psutil.STATUS_ZOMBIE:
             continue
-        if pdict['environ'] is not None:
-            if pdict['environ'].get('SIM_VEHICLE_SESSION') == os.environ['SIM_VEHICLE_SESSION']:
-                proc.kill()
+        if (
+            pdict['environ'] is not None
+            and pdict['environ'].get('SIM_VEHICLE_SESSION')
+            == os.environ['SIM_VEHICLE_SESSION']
+        ):
+            proc.kill()
 
 
 def kill_tasks_pkill(victims):
@@ -239,16 +228,15 @@ def kill_tasks():
             'ArduCopter.elf',
             'ArduSub.elf',
             'Rover.elf',
-            'AntennaTracker.elf',
             'JSBSIm.exe',
             'MAVProxy.exe',
             'runsim.py',
             'AntennaTracker.elf',
-            'scrimmage'
-            'ardurover',
+            'scrimmage' 'ardurover',
             'arduplane',
-            'arducopter'
+            'arducopter',
         }
+
         for vehicle in vinfo.options:
             for frame in vinfo.options[vehicle]["frames"]:
                 frame_info = vinfo.options[vehicle]["frames"][frame]
@@ -273,7 +261,7 @@ def kill_tasks():
 
 def progress(text):
     """Display sim_vehicle progress text"""
-    print("SIM_VEHICLE: " + text)
+    print(f"SIM_VEHICLE: {text}")
 
 
 def wait_unlimited():
@@ -302,16 +290,12 @@ def do_build(opts, frame_options):
         cmd_configure.append("--enable-onvif")
 
     if opts.OSD:
-        cmd_configure.append("--enable-sfml")
-        cmd_configure.append("--sitl-osd")
-
+        cmd_configure.extend(("--enable-sfml", "--sitl-osd"))
     if opts.OSDMSP:
         cmd_configure.append("--osd")
 
     if opts.rgbled:
-        cmd_configure.append("--enable-sfml")
-        cmd_configure.append("--sitl-rgbled")
-
+        cmd_configure.extend(("--enable-sfml", "--sitl-rgbled"))
     if opts.tonealarm:
         cmd_configure.append("--enable-sfml-audio")
 
@@ -394,10 +378,8 @@ def get_user_locations_path():
         'XDG_CONFIG_DIR',
         os.path.join(os.environ.get('HOME', '.'), '.config'))
 
-    user_locations_path = os.path.join(
+    return os.path.join(
         config_dir, 'ardupilot', 'locations.txt')
-
-    return user_locations_path
 
 
 def find_offsets(instances, file_path):
@@ -446,8 +428,9 @@ def find_geocoder_location(locname):
     start = time.time()
     alt = None
     while time.time() - start < 5:
-        tile = downloader.getTile(int(math.floor(lat)), int(math.floor(lon)))
-        if tile:
+        if tile := downloader.getTile(
+            int(math.floor(lat)), int(math.floor(lon))
+        ):
             alt = tile.getAltitudeFromLatLon(lat, lon)
             break
     if alt is None:
@@ -526,7 +509,7 @@ def run_in_terminal_window(name, cmd, **kw):
     global windowID
     runme = [os.path.join(autotest_dir, "run_in_terminal_window.sh"), name]
     runme.extend(cmd)
-    progress_cmd("Run " + name, runme)
+    progress_cmd(f"Run {name}", runme)
 
     if under_macos() and os.environ.get('DISPLAY'):
         # on MacOS record the window IDs so we can close them later
@@ -569,7 +552,7 @@ def start_antenna_tracker(opts):
     tracker_instance = 1
     oldpwd = os.getcwd()
     os.chdir(vehicledir)
-    tracker_uarta = "tcp:127.0.0.1:" + str(5760 + 10 * tracker_instance)
+    tracker_uarta = f"tcp:127.0.0.1:{str(5760 + 10 * tracker_instance)}"
     if cmd_opts.build_system == "waf":
         binary_basedir = "build/sitl"
         exe = os.path.join(root_dir,
@@ -577,12 +560,17 @@ def start_antenna_tracker(opts):
                            "bin/antennatracker")
     else:
         exe = os.path.join(vehicledir, "AntennaTracker.elf")
-    run_in_terminal_window("AntennaTracker",
-                           ["nice",
-                            exe,
-                            "-I" + str(tracker_instance),
-                            "--model=tracker",
-                            "--home=" + ",".join([str(x) for x in tracker_home])])
+    run_in_terminal_window(
+        "AntennaTracker",
+        [
+            "nice",
+            exe,
+            f"-I{tracker_instance}",
+            "--model=tracker",
+            "--home=" + ",".join([str(x) for x in tracker_home]),
+        ],
+    )
+
     os.chdir(oldpwd)
 
 
@@ -593,15 +581,17 @@ def start_vehicle(binary, opts, stuff, spawns=None):
     cmd = []
     if opts.valgrind:
         cmd_name += " (valgrind)"
-        cmd.append("valgrind")
-        # adding this option allows valgrind to cope with the overload
-        # of operator new
-        cmd.append("--soname-synonyms=somalloc=nouserintercepts")
-        cmd.append("--track-origins=yes")
+        cmd.extend(
+            (
+                "valgrind",
+                "--soname-synonyms=somalloc=nouserintercepts",
+                "--track-origins=yes",
+            )
+        )
+
     if opts.callgrind:
         cmd_name += " (callgrind)"
-        cmd.append("valgrind")
-        cmd.append("--tool=callgrind")
+        cmd.extend(("valgrind", "--tool=callgrind"))
     if opts.gdb or opts.gdb_stopped:
         cmd_name += " (gdb)"
         cmd.append("gdb")
@@ -615,8 +605,7 @@ def start_vehicle(binary, opts, stuff, spawns=None):
         if not opts.gdb_stopped:
             gdb_commands_file.write("r\n")
         gdb_commands_file.close()
-        cmd.extend(["-x", gdb_commands_file.name])
-        cmd.append("--args")
+        cmd.extend(["-x", gdb_commands_file.name, "--args"])
     elif opts.lldb or opts.lldb_stopped:
         cmd_name += " (lldb)"
         cmd.append("lldb")
@@ -628,20 +617,17 @@ def start_vehicle(binary, opts, stuff, spawns=None):
         if not opts.lldb_stopped:
             lldb_commands_file.write("process launch\n")
         lldb_commands_file.close()
-        cmd.extend(["-s", lldb_commands_file.name])
-        cmd.append("--")
+        cmd.extend(["-s", lldb_commands_file.name, "--"])
     if opts.strace:
         cmd_name += " (strace)"
         cmd.append("strace")
-        strace_options = ['-o', binary + '.strace', '-s', '8000', '-ttt']
+        strace_options = ['-o', f'{binary}.strace', '-s', '8000', '-ttt']
         cmd.extend(strace_options)
 
-    cmd.append(binary)
-    cmd.append("-S")
+    cmd.extend((binary, "-S"))
     if opts.wipe_eeprom:
         cmd.append("-w")
-    cmd.extend(["--model", stuff["model"]])
-    cmd.extend(["--speedup", str(opts.speedup)])
+    cmd.extend(["--model", stuff["model"], "--speedup", str(opts.speedup)])
     if opts.sysid is not None:
         cmd.extend(["--sysid", str(opts.sysid)])
     if opts.sitl_instance_args:
@@ -669,7 +655,7 @@ def start_vehicle(binary, opts, stuff, spawns=None):
                 sys.exit(1)
 
             if path is not None:
-                path += "," + str(file)
+                path += f",{str(file)}"
             else:
                 path = str(file)
 
@@ -698,7 +684,7 @@ def start_vehicle(binary, opts, stuff, spawns=None):
 
     old_dir = os.getcwd()
     for i, i_dir in zip(instances, instance_dir):
-        c = ["-I" + str(i)]
+        c = [f"-I{str(i)}"]
         if spawns is not None:
             c.extend(["--home", spawns[i]])
         os.chdir(i_dir)
@@ -714,9 +700,7 @@ def start_mavproxy(opts, stuff):
     extra_cmd = ""
     cmd = []
     if under_cygwin():
-        cmd.append("/usr/bin/cygstart")
-        cmd.append("-w")
-        cmd.append("mavproxy.exe")
+        cmd.extend(("/usr/bin/cygstart", "-w", "mavproxy.exe"))
     else:
         cmd.append("mavproxy.py")
 
@@ -766,7 +750,7 @@ def start_mavproxy(opts, stuff):
         for begin, end in zip(beginStringIndex, endStringIndex):
             replacement = " ".join(mavargs[begin:end+1])
             mavargs[begin] = replacement
-            mavargs = mavargs[0:begin+1] + mavargs[end+1:]
+            mavargs = mavargs[:begin+1] + mavargs[end+1:]
         cmd.extend(mavargs)
 
     # compatibility pass-through parameters (for those that don't want
@@ -795,7 +779,7 @@ def start_mavproxy(opts, stuff):
     local_mp_modules_dir = os.path.abspath(
         os.path.join(__file__, '..', '..', 'mavproxy_modules'))
     env = dict(os.environ)
-    old = env.get('PYTHONPATH', None)
+    old = env.get('PYTHONPATH')
     env['PYTHONPATH'] = local_mp_modules_dir
     if old is not None:
         env['PYTHONPATH'] += os.path.pathsep + old
@@ -810,19 +794,18 @@ def start_mavproxy(opts, stuff):
                 if os.path.isfile("/ardupilot.vagrant"):
                     # We're running inside of a vagrant guest; forward our
                     # mavlink out to the containing host OS
-                    c.extend(["--out", "10.0.2.2:" + str(port)])
+                    c.extend(["--out", f"10.0.2.2:{str(port)}"])
                 else:
-                    c.extend(["--out", "127.0.0.1:" + str(port)])
+                    c.extend(["--out", f"127.0.0.1:{str(port)}"])
 
-        if True:
-            if opts.mcast:
-                c.extend(["--master", "mcast:"])
-            elif opts.udp:
-                c.extend(["--master", ":" + str(5760 + 10 * i)])
-            else:
-                c.extend(["--master", "tcp:127.0.0.1:" + str(5760 + 10 * i)])
-            if stuff["sitl-port"] and not opts.no_rcin:
-                c.extend(["--sitl", "127.0.0.1:" + str(5501 + 10 * i)])
+        if opts.mcast:
+            c.extend(["--master", "mcast:"])
+        elif opts.udp:
+            c.extend(["--master", f":{str(5760 + 10 * i)}"])
+        else:
+            c.extend(["--master", f"tcp:127.0.0.1:{str(5760 + 10 * i)}"])
+        if stuff["sitl-port"] and not opts.no_rcin:
+            c.extend(["--sitl", f"127.0.0.1:{str(5501 + 10 * i)}"])
 
         os.chdir(i_dir)
         if i == instances[-1]:

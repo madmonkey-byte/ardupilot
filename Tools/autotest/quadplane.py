@@ -66,7 +66,7 @@ class AutoTestQuadPlane(AutoTest):
         return "QuadPlane"
 
     def set_current_test_name(self, name):
-        self.current_test_name_directory = "ArduPlane_Tests/" + name + "/"
+        self.current_test_name_directory = f"ArduPlane_Tests/{name}/"
 
     def apply_defaultfile_parameters(self):
         # plane passes in a defaults_filepath in place of applying
@@ -397,7 +397,7 @@ class AutoTestQuadPlane(AutoTest):
 
         self.progress("Flying left circuit")
         # do 4 turns
-        for i in range(0, 4):
+        for i in range(4):
             # hard left
             self.progress("Starting turn %u" % i)
             self.set_rc(1, 1000)
@@ -602,7 +602,7 @@ class AutoTestQuadPlane(AutoTest):
         self.takeoff(10, mode="QLOITER")
         self.set_parameter("STICK_MIXING", 0)
         self.set_rc(4, 1700)
-        for mode in "QLOITER", "QHOVER":
+        for _ in "QLOITER", "QHOVER":
             self.wait_heading(45)
             self.wait_heading(90)
             self.wait_heading(180)

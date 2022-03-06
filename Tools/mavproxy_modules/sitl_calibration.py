@@ -76,14 +76,13 @@ class CalController(object):
             self.attitude_callback = callback
 
     def angvel(self, x, y, z, theta):
-        m = max(abs(x), abs(y), abs(z))
-        if not m:
-            x_pwm = y_pwm = z_pwm = 1500
-        else:
+        if m := max(abs(x), abs(y), abs(z)):
             x_pwm = 1500 + round((x / m) * 500)
             y_pwm = 1500 + round((y / m) * 500)
             z_pwm = 1500 + round((z / m) * 500)
 
+        else:
+            x_pwm = y_pwm = z_pwm = 1500
         max_theta = 2 * math.pi
         if theta < 0:
             theta = 0
@@ -102,21 +101,22 @@ class CalController(object):
         self.mpstate.functions.process_stdin('servo set 5 1250')
 
     def handle_simstate(self, m):
-        if self.general_state == 'attitude':
-            q = quaternion.Quaternion((m.roll, m.pitch, m.yaw))
-            q.normalize()
-            d1 = abs(self.desired_quaternion.q - q.q)
-            d2 = abs(self.desired_quaternion.q + q.q)
-            if (d1 <= 1e-2).all() or (d2 <= 1e-2).all():
-                self.desired_quaternion_close_count += 1
-            else:
-                self.desired_quaternion_close_count = 0
+        if self.general_state != 'attitude':
+            return
+        q = quaternion.Quaternion((m.roll, m.pitch, m.yaw))
+        q.normalize()
+        d1 = abs(self.desired_quaternion.q - q.q)
+        d2 = abs(self.desired_quaternion.q + q.q)
+        if (d1 <= 1e-2).all() or (d2 <= 1e-2).all():
+            self.desired_quaternion_close_count += 1
+        else:
+            self.desired_quaternion_close_count = 0
 
-            if self.desired_quaternion_close_count == 5:
-                self.general_state = 'idle'
-                if callable(self.attitude_callback):
-                    self.attitude_callback()
-                    self.attitude_callback = None
+        if self.desired_quaternion_close_count == 5:
+            self.general_state = 'idle'
+            if callable(self.attitude_callback):
+                self.attitude_callback()
+                self.attitude_callback = None
 
     def mavlink_packet(self, m):
         if not self.active:
@@ -217,8 +217,7 @@ class AccelcalController(CalController):
         if m.get_type() != 'STATUSTEXT':
             return
 
-        side = self.side_from_msg(m)
-        if side:
+        if side := self.side_from_msg(m):
             self.set_side_state(side)
         else:
             success = self.report_from_msg(m)
@@ -303,7 +302,9 @@ class MagcalController(CalController):
                 # this is set to None so we can ensure we don't get
                 # progress reports for completed compasses.
                 self.last_progress[m.compass_id] = None
-            if len(self.last_progress.values()) and all(progress == None for progress in self.last_progress.values()):
+            if len(self.last_progress.values()) and all(
+                progress is None for progress in self.last_progress.values()
+            ):
                 self.stop()
             return
 

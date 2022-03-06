@@ -36,7 +36,7 @@ def get_board_list():
     dirname, dirlist, filenames = next(os.walk('libraries/AP_HAL_ChibiOS/hwdef'))
     for d in dirlist:
         hwdef = os.path.join(dirname, d, 'hwdef.dat')
-        if os.path.exists(hwdef) and not d in omit:
+        if os.path.exists(hwdef) and d not in omit:
             board_list.append(d)
     return board_list
 
@@ -90,7 +90,7 @@ for board in board_list:
         if target.find('/') != -1:
             run_program([args.python, "waf", "--target", target], "build: " + board)
         else:
-            run_program([args.python, "waf", target], "build: " + board)
+            run_program([args.python, "waf", target], f"build: {board}")
     if args.no_bl:
         continue
     # check for bootloader def
@@ -104,7 +104,7 @@ for board in board_list:
 if len(failures) > 0:
     print("Failed builds:")
     for f in failures:
-        print('  ' + f)
+        print(f'  {f}')
     sys.exit(1)
 
 sys.exit(0)

@@ -174,10 +174,7 @@ def main_loop():
 
             gps_week, gps_week_ms = get_gps_time(now)
 
-            if args.gps_nsats >= 6:
-                fix_type = 3
-            else:
-                fix_type = 1
+            fix_type = 3 if args.gps_nsats >= 6 else 1
             mav.mav.gps_input_send(time_us, 0, 0, gps_week_ms, gps_week, fix_type,
                                    int(gps_lat*1.0e7), int(gps_lon*1.0e7), gps_alt,
                                    1.0, 1.0,

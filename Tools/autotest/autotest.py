@@ -135,7 +135,7 @@ def build_examples(**kwargs):
             util.build_examples(target, **kwargs)
         except Exception as e:
             print("Failed build_examples on board=%s" % target)
-            print(str(e))
+            print(e)
             return False
 
     return True
@@ -149,7 +149,7 @@ def build_unit_tests(**kwargs):
             util.build_tests(target, **kwargs)
         except Exception as e:
             print("Failed build.unit_tests on board=%s" % target)
-            print(str(e))
+            print(e)
             return False
 
     return True
@@ -238,9 +238,9 @@ def convert_gpx():
     mavlog = glob.glob(buildlogs_path("*.tlog"))
     passed = True
     for m in mavlog:
-        util.run_cmd(mavtogpx_filepath() + " --nofixcheck " + m)
-        gpx = m + '.gpx'
-        kml = m + '.kml'
+        util.run_cmd(f'{mavtogpx_filepath()} --nofixcheck {m}')
+        gpx = f'{m}.gpx'
+        kml = f'{m}.kml'
         try:
             util.run_cmd('gpsbabel -i gpx -f %s '
                          '-o kml,units=m,floating=1,extrude=1 -F %s' %
@@ -267,11 +267,10 @@ def alarm_handler(signum, frame):
     global results, opts, tester
     try:
         print("Alarm handler called")
-        if tester is not None:
-            if tester.rc_thread is not None:
-                tester.rc_thread_should_quit = True
-                tester.rc_thread.join()
-                tester.rc_thread = None
+        if tester is not None and tester.rc_thread is not None:
+            tester.rc_thread_should_quit = True
+            tester.rc_thread.join()
+            tester.rc_thread = None
         results.add('TIMEOUT',
                     '<span class="failed-text">FAILED</span>',
                     opts.timeout)
@@ -286,10 +285,9 @@ def alarm_handler(signum, frame):
 
 def should_run_step(step):
     """See if a step should be skipped."""
-    for skip in skipsteps:
-        if fnmatch.fnmatch(step.lower(), skip.lower()):
-            return False
-    return True
+    return not any(
+        fnmatch.fnmatch(step.lower(), skip.lower()) for skip in skipsteps
+    )
 
 
 __bin_names = {
@@ -325,23 +323,22 @@ def binary_path(step, debug=False):
     except Exception:
         return None
 
-    if vehicle in __bin_names:
-        if len(__bin_names[vehicle].split(".")) == 2:
-            config_name = __bin_names[vehicle].split(".")[0]
-            binary_name = __bin_names[vehicle].split(".")[1]
-        else:
-            config_name = 'sitl'
-            binary_name = __bin_names[vehicle]
-    else:
+    if vehicle not in __bin_names:
         # cope with builds that don't have a specific binary
         return None
 
+    if len(__bin_names[vehicle].split(".")) == 2:
+        config_name = __bin_names[vehicle].split(".")[0]
+        binary_name = __bin_names[vehicle].split(".")[1]
+    else:
+        config_name = 'sitl'
+        binary_name = __bin_names[vehicle]
     binary = util.reltopdir(os.path.join('build',
                                          config_name,
                                          'bin',
                                          binary_name))
     if not os.path.exists(binary):
-        if os.path.exists(binary + ".exe"):
+        if os.path.exists(f'{binary}.exe'):
             binary += ".exe"
         else:
             raise ValueError("Binary (%s) does not exist" % (binary,))
@@ -440,26 +437,26 @@ def run_step(step):
         build_opts['extra_configure_args'].append("--Werror")
 
     vehicle_binary = None
-    if step == 'build.Plane':
-        vehicle_binary = 'bin/arduplane'
-
-    if step == 'build.Rover':
-        vehicle_binary = 'bin/ardurover'
-
     if step == 'build.Copter':
         vehicle_binary = 'bin/arducopter'
 
-    if step == 'build.Tracker':
-        vehicle_binary = 'bin/antennatracker'
-
-    if step == 'build.Helicopter':
+    elif step == 'build.Helicopter':
         vehicle_binary = 'bin/arducopter-heli'
 
-    if step == 'build.Sub':
+    elif step == 'build.Plane':
+        vehicle_binary = 'bin/arduplane'
+
+    elif step == 'build.Rover':
+        vehicle_binary = 'bin/ardurover'
+
+    elif step == 'build.SITLPeriphGPS':
+        vehicle_binary = 'sitl_periph_gps.bin/AP_Periph'
+
+    elif step == 'build.Sub':
         vehicle_binary = 'bin/ardusub'
 
-    if step == 'build.SITLPeriphGPS':
-        vehicle_binary = 'sitl_periph_gps.bin/AP_Periph'
+    elif step == 'build.Tracker':
+        vehicle_binary = 'bin/antennatracker'
 
     if step == 'build.Replay':
         return util.build_replay(board='SITL')
@@ -644,9 +641,8 @@ def write_webresults(results_to_write):
     t = mavtemplate.MAVTemplate()
     for h in glob.glob(util.reltopdir('Tools/autotest/web/*.html')):
         html = util.loadfile(h)
-        f = open(buildlogs_path(os.path.basename(h)), mode='w')
-        t.write(f, html, results_to_write)
-        f.close()
+        with open(buildlogs_path(os.path.basename(h)), mode='w') as f:
+            t.write(f, html, results_to_write)
     for f in glob.glob(util.reltopdir('Tools/autotest/web/*.png')):
         shutil.copy(f, buildlogs_path(os.path.basename(f)))
     copy_tree(util.reltopdir("Tools/autotest/web/css"), buildlogs_path("css"))
@@ -712,7 +708,7 @@ def run_tests(steps):
 
     passed = True
     failed = []
-    failed_testinstances = dict()
+    failed_testinstances = {}
     for step in steps:
         util.pexpect_close_all()
 

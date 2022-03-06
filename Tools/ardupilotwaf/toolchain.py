@@ -45,10 +45,10 @@ def _clang_cross_support(cfg):
     if _clang_cross_support.called:
         return
 
-    prefix = cfg.env.TOOLCHAIN + '-'
+    prefix = f'{cfg.env.TOOLCHAIN}-'
 
     try:
-        cfg.find_program(prefix + 'gcc', var='CROSS_GCC')
+        cfg.find_program(f'{prefix}gcc', var='CROSS_GCC')
     except Errors.ConfigurationError as e:
         cfg.fatal('toolchain: clang: couldn\'t find cross GCC', ex=e)
 
@@ -57,11 +57,7 @@ def _clang_cross_support(cfg):
         # avoid OS's environment to mess up toolchain path finding
         del environ['TOOLCHAIN_CROSS_AR']
     try:
-        cfg.find_program(
-            prefix + 'ar',
-            var='TOOLCHAIN_CROSS_AR',
-            environ=environ,
-        )
+        cfg.find_program(f'{prefix}ar', var='TOOLCHAIN_CROSS_AR', environ=environ)
     except Errors.ConfigurationError as e:
         cfg.fatal('toolchain: clang: couldn\'t find toolchain path', ex=e)
 
@@ -75,10 +71,10 @@ def _clang_cross_support(cfg):
     ).strip()
 
     cfg.env.CLANG_FLAGS = [
-        '--target=' + cfg.env.TOOLCHAIN,
-        '--gcc-toolchain=' + toolchain_path,
-        '--sysroot=' + sysroot,
-        '-B' + os.path.join(toolchain_path, 'bin')
+        f'--target={cfg.env.TOOLCHAIN}',
+        f'--gcc-toolchain={toolchain_path}',
+        f'--sysroot={sysroot}',
+        '-B' + os.path.join(toolchain_path, 'bin'),
     ]
 
 _clang_cross_support.called = False
@@ -119,7 +115,7 @@ def _set_pkgconfig_crosscompilation_wrapper(cfg):
 
     @conf
     def new_validate_cfg(kw):
-        if not 'path' in kw:
+        if 'path' not in kw:
             if not cfg.env.PKGCONFIG:
                 cfg.find_program('%s-pkg-config' % cfg.env.TOOLCHAIN, var='PKGCONFIG')
             kw['path'] = cfg.env.PKGCONFIG

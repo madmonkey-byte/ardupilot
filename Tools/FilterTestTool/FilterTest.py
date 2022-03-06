@@ -321,11 +321,7 @@ class FilterTest:
             filt_color = self.filter_color_map(i / num_filters)
             filt_shape, filt_cutoff = self.init_filter_shape(ax_filter, filter, filt_color)
 
-            if filt_type == BiquadFilterType.PEAK:
-                name = "Notch"
-            else:
-                name = "LPF"
-
+            name = "Notch" if filt_type == BiquadFilterType.PEAK else "LPF"
             # control for center freq is common to all filters
             self.create_filter_control("{} freq".format(name), filter, base_rect, 500, filter.get_center_freq(),
                                        filt_shape, filt_cutoff,

@@ -110,7 +110,7 @@ COMMON_VEHICLE_DEPENDENT_LIBRARIES = [
 
 def get_legacy_defines(sketch_name):
     return [
-        'APM_BUILD_DIRECTORY=APM_BUILD_' + sketch_name,
+        f'APM_BUILD_DIRECTORY=APM_BUILD_{sketch_name}',
         'SKETCH="' + sketch_name + '"',
         'SKETCHNAME="' + sketch_name + '"',
     ]
@@ -171,23 +171,22 @@ def ap_autoconfigure(execute_method):
                 else:
                     do_config = h != env.CONFIGURE_HASH
 
-        if do_config:
-            cmd = lock_env.config_cmd or 'configure'
-            tmp = Options.options.__dict__
-
-            if env.OPTIONS and sorted(env.OPTIONS.keys()) == sorted(tmp.keys()):
-                Options.options.__dict__ = env.OPTIONS
-            else:
-                raise Errors.WafError('The project configure options have changed: run "waf configure" again!')
-
-            try:
-                run_command(cmd)
-            finally:
-                Options.options.__dict__ = tmp
-
-            run_command(self.cmd)
-        else:
+        if not do_config:
             return execute_method(self)
+        cmd = lock_env.config_cmd or 'configure'
+        tmp = Options.options.__dict__
+
+        if env.OPTIONS and sorted(env.OPTIONS.keys()) == sorted(tmp.keys()):
+            Options.options.__dict__ = env.OPTIONS
+        else:
+            raise Errors.WafError('The project configure options have changed: run "waf configure" again!')
+
+        try:
+            run_command(cmd)
+        finally:
+            Options.options.__dict__ = tmp
+
+        run_command(self.cmd)
 
     return execute
 
@@ -266,9 +265,8 @@ def ap_program(bld,
     tg_constructor = bld.program
     if bld.env.AP_PROGRAM_AS_STLIB:
         tg_constructor = bld.stlib
-    else:
-        if bld.env.STATIC_LINKING:
-            kw['features'].append('static_linking')
+    elif bld.env.STATIC_LINKING:
+        kw['features'].append('static_linking')
 
 
     tg = tg_constructor(
@@ -343,7 +341,7 @@ def ap_find_tests(bld, use=[]):
     use = Utils.to_list(use)
     use.append('GTEST')
 
-    includes = [bld.srcnode.abspath() + '/tests/']
+    includes = [f'{bld.srcnode.abspath()}/tests/']
 
     for f in bld.path.ant_glob(incl='*.cpp'):
         ap_program(
@@ -389,12 +387,9 @@ def ap_find_benchmarks(bld, use=[]):
     if not bld.env.HAS_GBENCHMARK:
         return
 
-    includes = [bld.srcnode.abspath() + '/benchmarks/']
+    includes = [f'{bld.srcnode.abspath()}/benchmarks/']
     to_remove = '-Werror=suggest-override'
-    if to_remove in bld.env.CXXFLAGS:
-        need_remove = True
-    else:
-        need_remove = False
+    need_remove = to_remove in bld.env.CXXFLAGS
     if need_remove:
         while to_remove in bld.env.CXXFLAGS:
             bld.env.CXXFLAGS.remove(to_remove)
@@ -463,10 +458,9 @@ def _process_build_command(bld):
 
     params = _build_commands[bld.cmd]
 
-    targets = params['targets']
-    if targets:
+    if targets := params['targets']:
         if bld.targets:
-            bld.targets += ',' + targets
+            bld.targets += f',{targets}'
         else:
             bld.targets = targets
 
@@ -489,11 +483,7 @@ def build_command(name,
 def _select_programs_from_group(bld):
     groups = bld.options.program_group
     if not groups:
-        if bld.targets:
-            groups = []
-        else:
-            groups = ['bin']
-
+        groups = [] if bld.targets else ['bin']
     if 'all' in groups:
         groups = _grouped_programs.keys()
 
@@ -503,12 +493,12 @@ def _select_programs_from_group(bld):
 
         tg = _grouped_programs[group][0]
         if bld.targets:
-            bld.targets += ',' + tg.name
+            bld.targets += f',{tg.name}'
         else:
             bld.targets = tg.name
 
         for tg in _grouped_programs[group][1:]:
-            bld.targets += ',' + tg.name
+            bld.targets += f',{tg.name}'
 
 def options(opt):
     opt.ap_groups = {

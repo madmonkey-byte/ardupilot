@@ -27,7 +27,7 @@ class XmlEmit(Emit):
         self.f.close()
 
     def emit_comment(self, s):
-        self.f.write("<!-- " + s + " -->")
+        self.f.write(f"<!-- {s} -->")
 
     def start_libraries(self):
         self.current_element = self.libraries

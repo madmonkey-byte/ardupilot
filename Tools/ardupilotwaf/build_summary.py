@@ -52,8 +52,7 @@ header_text = {
 }
 
 def text(label, text=''):
-    text = text.strip()
-    if text:
+    if text := text.strip():
         Logs.info('%s%s%s%s%s' % (
             Logs.colors.NORMAL,
             Logs.colors.BOLD,
@@ -217,7 +216,7 @@ def configure(cfg):
     size_name = 'size'
 
     if cfg.env.TOOLCHAIN != 'native':
-        size_name = cfg.env.TOOLCHAIN + '-' + size_name
+        size_name = f'{cfg.env.TOOLCHAIN}-{size_name}'
 
     cfg.find_program(size_name, var='SIZE', mandatory=False)
 

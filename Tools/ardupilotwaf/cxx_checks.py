@@ -265,13 +265,21 @@ def check_SFML(cfg, env):
             return False
 
     # see if we need Graphics.hpp or Graphics.h
-    if not cfg.check(compiler='cxx',
-                     fragment='''#include <SFML/Graphics.hpp>\nint main() {}''', define_name="HAVE_SFML_GRAPHICS_HPP",
-                     msg="Checking for Graphics.hpp", mandatory=False):
-        if not cfg.check(compiler='cxx', fragment='''#include <SFML/Graphics.h>\nint main() {}''', define_name="HAVE_SFML_GRAPHICS_H",
-                         msg="Checking for Graphics.h", mandatory=False):
-            cfg.fatal("Missing SFML headers SFML/Graphics.hpp or SFML/Graphics.h")
-            return False
+    if not cfg.check(
+        compiler='cxx',
+        fragment='''#include <SFML/Graphics.hpp>\nint main() {}''',
+        define_name="HAVE_SFML_GRAPHICS_HPP",
+        msg="Checking for Graphics.hpp",
+        mandatory=False,
+    ) and not cfg.check(
+        compiler='cxx',
+        fragment='''#include <SFML/Graphics.h>\nint main() {}''',
+        define_name="HAVE_SFML_GRAPHICS_H",
+        msg="Checking for Graphics.h",
+        mandatory=False,
+    ):
+        cfg.fatal("Missing SFML headers SFML/Graphics.hpp or SFML/Graphics.h")
+        return False
     env.LIB += libs
     return True
 
@@ -289,13 +297,21 @@ def check_SFML_Audio(cfg, env):
             return False
 
     # see if we need Audio.hpp or Audio.h
-    if not cfg.check(compiler='cxx',
-                     fragment='''#include <SFML/Audio.hpp>\nint main() {}''', define_name="HAVE_SFML_AUDIO_HPP",
-                     msg="Checking for Audio.hpp", mandatory=False):
-        if not cfg.check(compiler='cxx', fragment='''#include <SFML/Audio.h>\nint main() {}''', define_name="HAVE_SFML_AUDIO_H",
-                         msg="Checking for Audio.h", mandatory=False):
-            cfg.fatal("Missing SFML headers SFML/Audio.hpp or SFML/Audio.h")
-            return False
+    if not cfg.check(
+        compiler='cxx',
+        fragment='''#include <SFML/Audio.hpp>\nint main() {}''',
+        define_name="HAVE_SFML_AUDIO_HPP",
+        msg="Checking for Audio.hpp",
+        mandatory=False,
+    ) and not cfg.check(
+        compiler='cxx',
+        fragment='''#include <SFML/Audio.h>\nint main() {}''',
+        define_name="HAVE_SFML_AUDIO_H",
+        msg="Checking for Audio.h",
+        mandatory=False,
+    ):
+        cfg.fatal("Missing SFML headers SFML/Audio.hpp or SFML/Audio.h")
+        return False
     env.LIB += libs
     return True
 

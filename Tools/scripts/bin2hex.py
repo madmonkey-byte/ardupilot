@@ -98,8 +98,7 @@ Options:
     def force_stream_binary(stream):
         """Force binary mode for stream on Windows."""
         if os.name == 'nt':
-            f_fileno = getattr(stream, 'fileno', None)
-            if f_fileno:
+            if f_fileno := getattr(stream, 'fileno', None):
                 fileno = f_fileno()
                 if fileno >= 0:
                     import msvcrt

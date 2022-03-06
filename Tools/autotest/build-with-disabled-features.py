@@ -83,7 +83,7 @@ class Builder():
         return set(ret)
 
     def disable_option_in_config(self, var):
-        tmpfile = util.reltopdir(self.config) + ".tmp"
+        tmpfile = f'{util.reltopdir(self.config)}.tmp'
         shutil.move(self.config, tmpfile)
         with open(self.config, 'w+') as out_fd:
             with open(util.reltopdir(tmpfile)) as fd:
@@ -102,7 +102,7 @@ class Builder():
                         line = "#define %s %s\n" % (var[0], fnoo)
                     out_fd.write(line)
             # turn dependencies on or off:
-        tmpfile = util.reltopdir(self.config) + ".tmp-deps"
+        tmpfile = f'{util.reltopdir(self.config)}.tmp-deps'
         shutil.move(self.config, tmpfile)
         with open(self.config, 'w+') as out_fd:
             with open(util.reltopdir(tmpfile)) as fd:
@@ -112,16 +112,12 @@ class Builder():
                         regex = ' *# *define +%s\s+(ENABLED|DISABLED|!HAL_MINIMIZE_FEATURES)' % thing
                         match = re.match(regex, line)
                         if match is not None:
-                            if did_enable:
-                                fnoo = "ENABLED"
-                            else:
-                                fnoo = "DISABLED"
-
+                            fnoo = "ENABLED" if did_enable else "DISABLED"
                             line = "#define %s %s\n" % (thing, fnoo)
                     out_fd.write(line)
 
     def backup_config_filepath(self):
-        return util.reltopdir(self.config) + ".backup"
+        return f'{util.reltopdir(self.config)}.backup'
 
     def backup_config(self):
         shutil.copy(self.config, self.backup_config_filepath())

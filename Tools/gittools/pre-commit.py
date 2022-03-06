@@ -40,10 +40,10 @@ class PreCommitFlake8(object):
         ret = []
         if type(output) == bytes:
             output = output.decode('utf-8')
-        for line in output.split("\n"):
-            if len(line) == 0:
-                continue
-            ret.append(re.split(r"\s+", line))
+        ret.extend(
+            re.split(r"\s+", line) for line in output.split("\n") if len(line) != 0
+        )
+
         return ret
 
     def run(self):

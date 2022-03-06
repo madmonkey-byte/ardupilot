@@ -22,12 +22,12 @@ class TestPitchRollCoupling(Test):
             self.result.status = TestResult.StatusType.NA
             return
 
-        if not "ATT" in logdata.channels:
+        if "ATT" not in logdata.channels:
             self.result.status = TestResult.StatusType.UNKNOWN
             self.result.statusMessage = "No ATT log data"
             return
 
-        if not "CTUN" in logdata.channels:
+        if "CTUN" not in logdata.channels:
             self.result.status = TestResult.StatusType.UNKNOWN
             self.result.statusMessage = "No CTUN log data"
             return

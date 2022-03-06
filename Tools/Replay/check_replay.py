@@ -21,7 +21,7 @@ def check_log(logfile, progress=print, ekf2_only=False, ekf3_only=False, verbose
 
     ek2_list = ['NKF1','NKF2','NKF3','NKF4','NKF5','NKF0','NKQ', 'NKY0', 'NKY1']
     ek3_list = ['XKF1','XKF2','XKF3','XKF4','XKF0','XKFS','XKQ','XKFD','XKV1','XKV2','XKY0','XKY1']
-    
+
     if ekf2_only:
         mlist = ek2_list
     elif ekf3_only:
@@ -29,10 +29,7 @@ def check_log(logfile, progress=print, ekf2_only=False, ekf3_only=False, verbose
     else:
         mlist = ek2_list + ek3_list
 
-    base = {}
-    for m in mlist:
-        base[m] = {}
-
+    base = {m: {} for m in mlist}
     while True:
         m = mlog.recv_match(type=mlist)
         if m is None:
@@ -40,7 +37,7 @@ def check_log(logfile, progress=print, ekf2_only=False, ekf3_only=False, verbose
         if not hasattr(m,'C'):
             continue
         mtype = m.get_type()
-        if not mtype in counts:
+        if mtype not in counts:
             counts[mtype] = 0
             base_counts[mtype] = 0
         core = m.C
@@ -73,8 +70,17 @@ def check_log(logfile, progress=print, ekf2_only=False, ekf3_only=False, verbose
             progress(m)
     progress("Processed %u/%u messages, %u errors" % (count, base_count, errors))
     if verbose:
-        for mtype in counts.keys():
-            progress("%s %u/%u %d" % (mtype, counts[mtype], base_counts[mtype], base_counts[mtype]-counts[mtype]))
+        for mtype, value in counts.items():
+            progress(
+                "%s %u/%u %d"
+                % (
+                    mtype,
+                    counts[mtype],
+                    base_counts[mtype],
+                    base_counts[mtype] - value,
+                )
+            )
+
     if count == 0 or abs(count - base_count) > 100:
         failure += 1
     if failure != 0 or errors != 0:

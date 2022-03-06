@@ -368,19 +368,18 @@ def _check_min_version(cfg):
     cfg.start_msg('Checking cmake version')
     cmd = cfg.env.get_flat('CMAKE'), '--version'
     out = cfg.cmd_and_log(cmd, quiet=Context.BOTH)
-    m = re.search(r'\d+\.\d+(\.\d+(\.\d+)?)?', out)
-    if not m:
-        cfg.end_msg(
-            'unable to parse version, build is not guaranteed to succeed',
-            color='YELLOW',
-        )
-    else:
+    if m := re.search(r'\d+\.\d+(\.\d+(\.\d+)?)?', out):
         version = Utils.num2ver(m.group(0))
         minver_str = cfg.env.get_flat('CMAKE_MIN_VERSION')
         minver = Utils.num2ver(minver_str)
         if version < minver:
             cfg.fatal('cmake must be at least at version %s' % minver_str)
         cfg.end_msg(m.group(0))
+    else:
+        cfg.end_msg(
+            'unable to parse version, build is not guaranteed to succeed',
+            color='YELLOW',
+        )
 
 generators = dict(
     default=[

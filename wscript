@@ -96,7 +96,7 @@ def options(opt):
         action='store_true',
         default=False,
         help='build with -Werror.')
-    
+
     g.add_option('--toolchain',
         action='store',
         default=None,
@@ -121,7 +121,7 @@ def options(opt):
         action='store_true',
         default=False,
         help='enable OS level thread statistics.')
-    
+
     g.add_option('--bootloader',
         action='store_true',
         default=False,
@@ -164,7 +164,7 @@ submodules at specific revisions.
     g.add_option('--no-gcs', action='store_true',
                  default=False,
                  help="Disable GCS code")
-    
+
     g.add_option('--scripting-checks', action='store_true',
                  default=True,
                  help="Enable runtime scripting sanity checks")
@@ -177,8 +177,7 @@ submodules at specific revisions.
 
     linux_options = ('--prefix', '--destdir', '--bindir', '--libdir')
     for k in linux_options:
-        option = opt.parser.get_option(k)
-        if option:
+        if option := opt.parser.get_option(k):
             opt.parser.remove_option(k)
             g.add_option(option)
 
@@ -233,7 +232,7 @@ configuration in order to save typing.
     g.add_option('--osd-fonts', action='store_true',
                  default=False,
                  help="Enable OSD support with fonts")
-    
+
     g.add_option('--sitl-osd', action='store_true',
                  default=False,
                  help="Enable SITL OSD")
@@ -270,7 +269,7 @@ configuration in order to save typing.
         action='store_true',
         default=False,
         help='Configure EKF as single precision.')
-    
+
     g.add_option('--static',
         action='store_true',
         default=False,
@@ -280,11 +279,11 @@ configuration in order to save typing.
         action='store_true',
         default=False,
         help='force single precision postype_t')
-    
+
     g.add_option('--extra-hwdef',
-	    action='store',
-	    default=None,
-	    help='Extra hwdef.dat file for custom build.')
+    action='store',
+    default=None,
+    help='Extra hwdef.dat file for custom build.')
 
     g.add_option('--assert-cc-version',
                  default=None,
@@ -296,10 +295,7 @@ def _collect_autoconfig_files(cfg):
         if hasattr(m, '__file__') and m.__file__ is not None:
             paths.append(m.__file__)
         elif hasattr(m, '__path__'):
-            for p in m.__path__:
-                if p is not None:
-                    paths.append(p)
-
+            paths.extend(p for p in m.__path__ if p is not None)
         for p in paths:
             if p in cfg.files or not os.path.isfile(p):
                 continue
@@ -314,12 +310,12 @@ def configure(cfg):
         cfg.options.board = 'sitl'
 
     boards_names = boards.get_boards_names()
-    if not cfg.options.board in boards_names:
+    if cfg.options.board not in boards_names:
         for b in boards_names:
             if b.upper() == cfg.options.board.upper():
                 cfg.options.board = b
                 break
-        
+
     cfg.env.BOARD = cfg.options.board
     cfg.env.DEBUG = cfg.options.debug
     cfg.env.COVERAGE = cfg.options.coverage
@@ -420,9 +416,7 @@ def configure(cfg):
 
     cfg.env.append_value('GIT_SUBMODULES', 'mavlink')
 
-    cfg.env.prepend_value('INCLUDES', [
-        cfg.srcnode.abspath() + '/libraries/',
-    ])
+    cfg.env.prepend_value('INCLUDES', [f'{cfg.srcnode.abspath()}/libraries/'])
 
     cfg.find_program('rsync', mandatory=False)
     if cfg.options.rsync_dest:
@@ -460,8 +454,11 @@ def collect_dirs_to_recurse(bld, globs, **kw):
         kw['excl'].append(bld.bldnode.path_from(bld.srcnode))
 
     for g in globs:
-        for d in bld.srcnode.ant_glob(g + '/wscript', **kw):
-            dirs.append(d.parent.relpath())
+        dirs.extend(
+            d.parent.relpath()
+            for d in bld.srcnode.ant_glob(f'{g}/wscript', **kw)
+        )
+
     return dirs
 
 def list_boards(ctx):
@@ -480,24 +477,23 @@ def generate_tasklist(ctx, do_print=True):
     tasks = []
     with open(os.path.join(Context.top_dir, "tasklist.json"), "w") as tlist:
         for board in boardlist:
-            task = {}
-            task['configure'] = board
+            task = {'configure': board}
             if board in ap_periph_targets:
-                if 'sitl' not in board:
-                    # we only support AP_Periph and bootloader builds
-                    task['targets'] = ['AP_Periph', 'bootloader']
-                else:
-                    task['targets'] = ['AP_Periph']
+                task['targets'] = (
+                    ['AP_Periph', 'bootloader']
+                    if 'sitl' not in board
+                    else ['AP_Periph']
+                )
+
             elif 'iofirmware' in board:
                 task['targets'] = ['iofirmware', 'bootloader']
+            elif 'sitl' in board or 'SITL' in board:
+                task['targets'] = ['antennatracker', 'copter', 'heli', 'plane', 'rover', 'sub', 'replay']
+            elif 'linux' in board:
+                task['targets'] = ['antennatracker', 'copter', 'heli', 'plane', 'rover', 'sub']
             else:
-                if 'sitl' in board or 'SITL' in board:
-                    task['targets'] = ['antennatracker', 'copter', 'heli', 'plane', 'rover', 'sub', 'replay']
-                elif 'linux' in board:
-                    task['targets'] = ['antennatracker', 'copter', 'heli', 'plane', 'rover', 'sub']
-                else:
-                    task['targets'] = ['antennatracker', 'copter', 'heli', 'plane', 'rover', 'sub', 'bootloader']
-                    task['buildOptions'] = '--upload'
+                task['targets'] = ['antennatracker', 'copter', 'heli', 'plane', 'rover', 'sub', 'bootloader']
+                task['buildOptions'] = '--upload'
             tasks.append(task)
         tlist.write(json.dumps(tasks))
         if do_print:
@@ -614,13 +610,11 @@ def _build_recursion(bld):
         common_dirs_patterns,
         excl=common_dirs_excl,
     )
-    if bld.env.IOMCU_FW is not None:
-        if bld.env.IOMCU_FW:
-            dirs_to_recurse.append('libraries/AP_IOMCU/iofirmware')
+    if bld.env.IOMCU_FW is not None and bld.env.IOMCU_FW:
+        dirs_to_recurse.append('libraries/AP_IOMCU/iofirmware')
 
-    if bld.env.PERIPH_FW is not None:
-        if bld.env.PERIPH_FW:
-            dirs_to_recurse.append('Tools/AP_Periph')
+    if bld.env.PERIPH_FW is not None and bld.env.PERIPH_FW:
+        dirs_to_recurse.append('Tools/AP_Periph')
 
     dirs_to_recurse.append('libraries/AP_Scripting')
 

@@ -242,7 +242,7 @@ class BisectCITest(Bisect):
         cmd.append("test.%s.%s" % (self.opts.autotest_vehicle, self.opts.autotest_test))
 
         code = self.exit_pass_code()
-        for i in range(0, self.opts.autotest_test_passes):
+        for i in range(self.opts.autotest_test_passes):
             ignore = False
             try:
                 self.run_program(
@@ -253,14 +253,18 @@ class BisectCITest(Bisect):
                     if ignore_string in self.program_output:
                         self.progress("Found ignore string (%s) in program output" % ignore_string)
                         ignore = True
-                if not ignore and self.opts.autotest_failure_require_string is not None:
-                    if self.opts.autotest_failure_require_string not in self.program_output:
-                        # it failed, but not for the reason we're looking
-                        # for...
-                        self.progress("Did not find test failure string (%s); skipping" %
-                                      self.opts.autotest_failure_require_string)
-                        code = self.exit_skip_code()
-                        break
+                if (
+                    not ignore
+                    and self.opts.autotest_failure_require_string is not None
+                    and self.opts.autotest_failure_require_string
+                    not in self.program_output
+                ):
+                    # it failed, but not for the reason we're looking
+                    # for...
+                    self.progress("Did not find test failure string (%s); skipping" %
+                                  self.opts.autotest_failure_require_string)
+                    code = self.exit_skip_code()
+                    break
                 if not ignore:
                     code = self.exit_fail_code()
 

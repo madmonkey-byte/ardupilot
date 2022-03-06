@@ -64,7 +64,7 @@ class AutoTestPlane(AutoTest):
         return os.path.join(testdir, 'default_params/plane-jsbsim.parm')
 
     def set_current_test_name(self, name):
-        self.current_test_name_directory = "ArduPlane_Tests/" + name + "/"
+        self.current_test_name_directory = f"ArduPlane_Tests/{name}/"
 
     def default_frame(self):
         return "plane-elevrev"
@@ -136,7 +136,7 @@ class AutoTestPlane(AutoTest):
 
         self.progress("Flying left circuit")
         # do 4 turns
-        for i in range(0, 4):
+        for i in range(4):
             # hard left
             self.progress("Starting turn %u" % i)
             self.set_rc(1, 1000)
@@ -337,29 +337,10 @@ class AutoTestPlane(AutoTest):
                     continue
 
                 r = math.degrees(m.roll)
-                if state == state_roll_over:
-                    target_roll_degrees = 60
-                    if abs(r - target_roll_degrees) < tolerance:
-                        state = state_stabilize_roll
-                        stabilize_start = now
-                elif state == state_stabilize_roll:
-                    # just give it a little time to sort it self out
-                    if now - stabilize_start > 2:
-                        state = state_hold
-                        hold_start = now
-                elif state == state_hold:
-                    target_roll_degrees = 60
-                    if now - hold_start > tolerance:
-                        state = state_roll_back
-                    if abs(r - target_roll_degrees) > tolerance:
-                        raise NotAchievedException("Failed to hold attitude")
-                elif state == state_roll_back:
-                    target_roll_degrees = 0
-                    if abs(r - target_roll_degrees) < tolerance:
-                        state = state_done
-                else:
-                    raise ValueError("Unknown state %s" % str(state))
-
+                target_roll_degrees = 60
+                if abs(r - target_roll_degrees) < tolerance:
+                    state = state_stabilize_roll
+                    stabilize_start = now
                 m_nav = self.mav.messages['NAV_CONTROLLER_OUTPUT']
                 self.progress("%s Roll: %f desired=%f set=%f" %
                               (state, r, m_nav.nav_roll, target_roll_degrees))
@@ -447,14 +428,11 @@ class AutoTestPlane(AutoTest):
 
         self.change_mode('ACRO')
 
-        count = 2
-        while count > 0:
+        for _ in range(2, 0, -1):
             self.progress("Starting loop")
             self.set_rc(2, 1000)
             self.wait_pitch(-60, accuracy=20)
             self.wait_pitch(0, accuracy=20)
-            count -= 1
-
         self.set_rc(2, 1500)
 
         # back to FBWA
@@ -480,7 +458,7 @@ class AutoTestPlane(AutoTest):
 
         self.progress("Flying right circuit")
         # do 4 turns
-        for i in range(0, 4):
+        for i in range(4):
             # hard left
             self.progress("Starting turn %u" % i)
             self.set_rc(1, 1800)
@@ -496,7 +474,7 @@ class AutoTestPlane(AutoTest):
 
         self.progress("Flying rudder left circuit")
         # do 4 turns
-        for i in range(0, 4):
+        for i in range(4):
             # hard left
             self.progress("Starting turn %u" % i)
             self.set_rc(4, 1900)
@@ -887,8 +865,9 @@ class AutoTestPlane(AutoTest):
         self.context_collect("HEARTBEAT")
         self.set_parameter("SIM_RC_FAIL", 2) # throttle-to-950
         self.wait_mode('RTL') # long failsafe
-        if (not self.get_mode_from_mode_mapping("CIRCLE") in
-                [x.custom_mode for x in self.context_stop_collecting("HEARTBEAT")]):
+        if self.get_mode_from_mode_mapping("CIRCLE") not in [
+            x.custom_mode for x in self.context_stop_collecting("HEARTBEAT")
+        ]:
             raise NotAchievedException("Did not go via circle mode")
         self.progress("Ensure we've had our throttle squashed to 950")
         self.wait_rc_channel_value(3, 950)
@@ -925,8 +904,9 @@ class AutoTestPlane(AutoTest):
         self.context_collect("HEARTBEAT")
         self.set_parameter("SIM_RC_FAIL", 1) # no-pulses
         self.wait_mode('RTL') # long failsafe
-        if (not self.get_mode_from_mode_mapping("CIRCLE") in
-                [x.custom_mode for x in self.context_stop_collecting("HEARTBEAT")]):
+        if self.get_mode_from_mode_mapping("CIRCLE") not in [
+            x.custom_mode for x in self.context_stop_collecting("HEARTBEAT")
+        ]:
             raise NotAchievedException("Did not go via circle mode")
         self.drain_mav_unparsed()
         m = self.mav.recv_match(type='SYS_STATUS', blocking=True)
